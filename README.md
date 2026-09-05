@@ -8,8 +8,8 @@
 Zero-client WhatsApp micro-commerce for home cooks and their customers.
 Nobody installs an app — cooks broadcast menus and customers order dinner
 entirely inside plain WhatsApp chats, using single-digit replies (`Reply 1`),
-👍/👎 confirmations, and short localized text. English, Spanish, and Hindi
-are built in; the language can be switched mid-chat with one word.
+👍/👎 confirmations, and short localized text. English, Spanish, Hindi, and Marathi
+are built in (Marathi is a partial locale — missing keys fall back to English); the language can be switched mid-chat with one word.
 
 Built on the **Meta WhatsApp Business Cloud API** + **PostgreSQL**
 (Supabase-ready), deployable for (almost) free on **Render** or **Vercel**.
@@ -95,7 +95,7 @@ biteflow/
 │       ├── economics.py   # recipes, margins, stock, procurement, P&L
 │       ├── marketing.py   # referrals, offers, campaigns, win-back
 │       └── digest.py      # daily P&L WhatsApp digest builder
-├── locales/               # en.json, es.json, hi.json (identical key sets)
+├── locales/               # en/es/hi.json (identical key sets); mr.json (partial, EN fallback)
 ├── sql/schema.sql         # base schema (frozen)
 ├── sql/migrations/        # additive migrations only (002–004)
 ├── tests/                 # 49 pytest tests (see Testing)

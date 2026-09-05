@@ -18,7 +18,7 @@ def test_language_switch_mid_menu_browsing(db, wa, send, customer_at_menu):
 
     # invalid choice → polite re-prompt, still selecting
     send(CUST, "5")
-    assert "1, 2, or 3" in wa.last_to(CUST)
+    assert "1, 2, 3, or 4" in wa.last_to(CUST)
     assert db.get_session(CUST)["state"] == "language_select"
 
     # pick Spanish → confirmation in Spanish, state restored, menu re-shown

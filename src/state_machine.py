@@ -87,7 +87,7 @@ def _enter_language_select(ctx: Ctx) -> None:
 
 
 def _handle_language_select(ctx: Ctx) -> None:
-    choice = parse_choice(ctx.text, 1, 3)
+    choice = parse_choice(ctx.text, 1, len(M.LANGUAGE_OPTIONS))
     if choice is None:
         ctx.reply("language_invalid")
         return

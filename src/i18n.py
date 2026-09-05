@@ -5,8 +5,9 @@
 - `resolve_language()` picks the chat language: explicit session override,
   else the user's DB preference, else the configured default.
 
-Locale files live in locales/{en,es,hi}.json and MUST share identical keys;
-tests enforce this.
+Locale files: en/es/hi MUST share identical keys (tests enforce this).
+mr is a declared PARTIAL locale: keys it defines are used as-is,
+everything else falls back to English via I18n.t (tested).
 """
 
 from __future__ import annotations

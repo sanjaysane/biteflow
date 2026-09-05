@@ -31,8 +31,8 @@ K_STATUS = "status_update_broadcast"  # 1 = cooking, 2 = on the way, 3 = done
 # ── Order / payment statuses (mirror the SQL enums) ────────────────
 OPEN_ORDER_STATUSES = ("received", "accepted", "cooking", "out_for_delivery")
 
-SUPPORTED_LANGUAGES = ("en", "es", "hi")
-LANGUAGE_OPTIONS = (("1", "en"), ("2", "es"), ("3", "hi"))
+SUPPORTED_LANGUAGES = ("en", "es", "hi", "mr")
+LANGUAGE_OPTIONS = (("1", "en"), ("2", "es"), ("3", "hi"), ("4", "mr"))
 
 # Words (any supported language) that open the language menu mid-chat.
 LANGUAGE_COMMANDS = {"language", "idioma", "भाषा", "lang", "lenguaje"}
