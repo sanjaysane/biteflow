@@ -32,7 +32,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="BiteFlow", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="BiteFlow", version="0.1.0", lifespan=lifespan)
 
 
 def build_runtime():
@@ -94,24 +94,34 @@ def _extract_messages(payload: dict):
                     text = (msg.get("image") or {}).get("caption")
                 elif mtype == "button":
                     text = (msg.get("button") or {}).get("text")
-                yield phone, text, mtype if mtype in ("text", "image") else "other", media_id
+                yield (
+                    phone,
+                    text,
+                    mtype if mtype in ("text", "image") else "other",
+                    media_id,
+                )
 
 
 @app.post("/webhook")
 async def receive_webhook(request: Request):
     try:
         payload = await request.json()
-    except Exception:
+    except Exception:  # noqa: BLE001 - malformed body must not 500 a webhook
         return {"ok": False, "error": "invalid JSON"}
     if not isinstance(payload, dict):
         return {"ok": True}
     for phone, text, mtype, media_id in _extract_messages(payload):
         try:
             process_incoming(
-                app.state.db, app.state.wa, app.state.i18n,
-                phone, text, msg_type=mtype, media_id=media_id,
+                app.state.db,
+                app.state.wa,
+                app.state.i18n,
+                phone,
+                text,
+                msg_type=mtype,
+                media_id=media_id,
                 default_lang=settings.default_language,
             )
-        except Exception as exc:  # never 500 a webhook; log and continue
+        except Exception as exc:  # noqa: BLE001 - never 500 a webhook; log and continue
             print(f"[biteflow] handler error for {phone}: {exc!r}")
     return {"ok": True}

@@ -34,7 +34,9 @@ class Settings:
         raw = _get("COOK_ALLOWLIST")
         if raw:
             object.__setattr__(
-                self, "cook_allowlist", tuple(p.strip() for p in raw.split(",") if p.strip())
+                self,
+                "cook_allowlist",
+                tuple(p.strip() for p in raw.split(",") if p.strip()),
             )
 
     @property

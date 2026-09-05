@@ -26,7 +26,7 @@ class I18n:
             with open(path, encoding="utf-8") as fh:
                 data = json.load(fh)
             if not isinstance(data, dict):
-                raise ValueError(f"Locale file {path} must be a JSON object")
+                raise TypeError(f"Locale file {path} must be a JSON object")
             self._tables[lang] = {k: str(v) for k, v in data.items()}
 
     @property
@@ -49,8 +49,9 @@ class I18n:
             return template
 
 
-def resolve_language(user: dict | None, session: dict | None,
-                     default: str = "en") -> str:
+def resolve_language(
+    user: dict | None, session: dict | None, default: str = "en"
+) -> str:
     """Priority: live session override → stored user preference → default."""
     for source in (session, user):
         if source:

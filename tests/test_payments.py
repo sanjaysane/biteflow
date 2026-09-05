@@ -7,10 +7,10 @@ from tests.conftest import COOK, CUST
 
 def _build_cart_to_payment(send, db, wa):
     """Drive CUST to the payment-method prompt; returns nothing."""
-    send(CUST, "1")   # menu item 1
-    send(CUST, "2")   # qty 2
-    send(CUST, "0")   # checkout
-    send(CUST, "1")   # confirm order
+    send(CUST, "1")  # menu item 1
+    send(CUST, "2")  # qty 2
+    send(CUST, "0")  # checkout
+    send(CUST, "1")  # confirm order
     assert db.get_session(CUST)["state"] == "payment_method"
 
 

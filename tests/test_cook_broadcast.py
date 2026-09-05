@@ -39,10 +39,10 @@ def test_invalid_price_rejected_keeps_progress(db, wa, send):
 
 def test_rebroadcast_replaces_old_menu(db, wa, send, cook_with_menu):
     assert len(db.get_active_menus(COOK)) == 2
-    send(COOK, "1")          # start a new broadcast
-    send(COOK, "Idli")       # (old menu deactivated at broadcast start)
+    send(COOK, "1")  # start a new broadcast
+    send(COOK, "Idli")  # (old menu deactivated at broadcast start)
     assert db.get_active_menus(COOK) == []
     send(COOK, "5")
-    send(COOK, "2")          # done
+    send(COOK, "2")  # done
     items = db.get_active_menus(COOK)
     assert len(items) == 1 and items[0]["item_name"] == "Idli"

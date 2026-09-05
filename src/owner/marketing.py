@@ -20,9 +20,9 @@ def utcnow() -> datetime:
 
 
 # ── referrals ────────────────────────────────────────────────────────
-def get_or_create_referral(db: Database, cook_phone: str,
-                           referrer_phone: str,
-                           reward_amount: float = 2.00) -> dict:
+def get_or_create_referral(
+    db: Database, cook_phone: str, referrer_phone: str, reward_amount: float = 2.00
+) -> dict:
     """One code per referrer per cook; idempotent."""
     for ref in db.get_referrals_for_cook(cook_phone):
         if ref["referrer_phone"] == referrer_phone:
@@ -35,8 +35,9 @@ def get_or_create_referral(db: Database, cook_phone: str,
     return db.create_referral(cook_phone, code, referrer_phone, reward_amount)
 
 
-def apply_referral(db: Database, cook_phone: str, redeemer_phone: str,
-                   code: str, order_total: float) -> dict:
+def apply_referral(
+    db: Database, cook_phone: str, redeemer_phone: str, code: str, order_total: float
+) -> dict:
     """Validate a typed code and compute the discount.
 
     Returns {"ok", "discount", "desc", "referral_id", "reason"}.
@@ -46,22 +47,42 @@ def apply_referral(db: Database, cook_phone: str, redeemer_phone: str,
     code = (code or "").strip().upper()
     ref = db.get_referral_by_code(code)
     if ref is None or ref["cook_phone"] != cook_phone:
-        return {"ok": False, "discount": 0.0, "desc": "",
-                "referral_id": None, "reason": "unknown_code"}
+        return {
+            "ok": False,
+            "discount": 0.0,
+            "desc": "",
+            "referral_id": None,
+            "reason": "unknown_code",
+        }
     if ref["referrer_phone"] == redeemer_phone:
-        return {"ok": False, "discount": 0.0, "desc": "",
-                "referral_id": None, "reason": "own_code"}
+        return {
+            "ok": False,
+            "discount": 0.0,
+            "desc": "",
+            "referral_id": None,
+            "reason": "own_code",
+        }
     if db.has_redeemed(int(ref["id"]), redeemer_phone):
-        return {"ok": False, "discount": 0.0, "desc": "",
-                "referral_id": None, "reason": "already_used"}
+        return {
+            "ok": False,
+            "discount": 0.0,
+            "desc": "",
+            "referral_id": None,
+            "reason": "already_used",
+        }
     discount = round(min(float(ref["reward_amount"]), float(order_total)), 2)
-    return {"ok": True, "discount": discount,
-            "desc": f"Referral {code} −${money(discount)}",
-            "referral_id": int(ref["id"]), "reason": ""}
+    return {
+        "ok": True,
+        "discount": discount,
+        "desc": f"Referral {code} −${money(discount)}",
+        "referral_id": int(ref["id"]),
+        "reason": "",
+    }
 
 
-def finalize_referral(db: Database, cook_phone: str, referral_id: int,
-                      redeemer_phone: str, order_id: int) -> None:
+def finalize_referral(
+    db: Database, cook_phone: str, referral_id: int, redeemer_phone: str, order_id: int
+) -> None:
     """Called once the discounted order is created: record redemption and
     credit the referrer (dual-sided reward). Idempotent per order."""
     ref = db.get_referral_by_id(cook_phone, referral_id)
@@ -69,31 +90,31 @@ def finalize_referral(db: Database, cook_phone: str, referral_id: int,
         return
     if db.record_redemption(referral_id, redeemer_phone, order_id):
         db.add_credit_ledger(
-            cook_phone, ref["referrer_phone"],
+            cook_phone,
+            ref["referrer_phone"],
             float(ref["reward_amount"]),
-            f"referral {ref['code']} used by {redeemer_phone}")
+            f"referral {ref['code']} used by {redeemer_phone}",
+        )
 
 
-def referrer_credit_available(db: Database, cook_phone: str,
-                              phone: str) -> float:
+def referrer_credit_available(db: Database, cook_phone: str, phone: str) -> float:
     return round(max(0.0, db.get_credit_balance(cook_phone, phone)), 2)
 
 
-def consume_referrer_credit(db: Database, cook_phone: str, phone: str,
-                            order_total: float) -> dict:
+def consume_referrer_credit(
+    db: Database, cook_phone: str, phone: str, order_total: float
+) -> dict:
     """Auto-apply earned credit to the referrer's own order review."""
     balance = referrer_credit_available(db, cook_phone, phone)
     if balance <= 0:
         return {"discount": 0.0, "desc": ""}
     use = round(min(balance, order_total), 2)
-    db.add_credit_ledger(cook_phone, phone, -use,
-                         "credit applied to own order")
+    db.add_credit_ledger(cook_phone, phone, -use, "credit applied to own order")
     return {"discount": use, "desc": f"Referral credit −${money(use)}"}
 
 
 # ── freemium first-order offers ──────────────────────────────────────
-def is_first_order(db: Database, cook_phone: str,
-                   customer_phone: str) -> bool:
+def is_first_order(db: Database, cook_phone: str, customer_phone: str) -> bool:
     """True when the customer has no completed order with this cook."""
     for order in db.get_completed_orders(cook_phone):
         if order["customer_phone"] == customer_phone:
@@ -101,8 +122,13 @@ def is_first_order(db: Database, cook_phone: str,
     return True
 
 
-def first_order_offer(db: Database, cook_phone: str, customer_phone: str,
-                      cart_total: float, cart: list[dict]) -> dict:
+def first_order_offer(
+    db: Database,
+    cook_phone: str,
+    customer_phone: str,
+    cart_total: float,
+    cart: list[dict],
+) -> dict:
     """Auto-applied freemium for first-time customers. {"discount", "desc"}."""
     if not is_first_order(db, cook_phone, customer_phone):
         return {"discount": 0.0, "desc": ""}
@@ -116,29 +142,36 @@ def first_order_offer(db: Database, cook_phone: str, customer_phone: str,
         except ValueError:
             return {"discount": 0.0, "desc": ""}
         discount = round(cart_total * pct / 100.0, 2)
-        return {"discount": discount,
-                "desc": f"First-order {pct:g}% off −${money(discount)}"}
+        return {
+            "discount": discount,
+            "desc": f"First-order {pct:g}% off −${money(discount)}",
+        }
     if otype == "first_order_free_item":
         # value_text holds the menu item name; cheapest cart line free.
         if not cart:
             return {"discount": 0.0, "desc": ""}
         cheapest = min(float(c["price"]) for c in cart)
-        return {"discount": round(cheapest, 2),
-                "desc": f"First order: free {offer['value_text']} 🎁"}
+        return {
+            "discount": round(cheapest, 2),
+            "desc": f"First order: free {offer['value_text']} 🎁",
+        }
     if otype == "first_order_free_delivery":
         try:
             flat = max(0.0, float(offer["value_text"] or 2.0))
         except ValueError:
             flat = 2.0
         discount = round(min(flat, cart_total), 2)
-        return {"discount": discount,
-                "desc": f"First order: free delivery −${money(discount)} 🛵"}
+        return {
+            "discount": discount,
+            "desc": f"First order: free delivery −${money(discount)} 🛵",
+        }
     return {"discount": 0.0, "desc": ""}
 
 
 # ── win-back ─────────────────────────────────────────────────────────
-def find_winback_candidates(db: Database, cook_phone: str,
-                            days: int = S.WINBACK_DAYS) -> list[dict]:
+def find_winback_candidates(
+    db: Database, cook_phone: str, days: int = S.WINBACK_DAYS
+) -> list[dict]:
     """Opted-in customers whose last completed order is ≥ `days` old and
     who have not been nudged in the last 30 days."""
     cutoff = utcnow() - timedelta(days=days)
@@ -163,7 +196,8 @@ def find_winback_candidates(db: Database, cook_phone: str,
         else:
             try:
                 sent = datetime.fromisoformat(
-                    db.get_last_winback_at(cook_phone, c["phone"]))
+                    db.get_last_winback_at(cook_phone, c["phone"])
+                )
                 if sent.replace(tzinfo=timezone.utc) <= renudge_cutoff:
                     fresh.append(c)
             except (ValueError, TypeError):

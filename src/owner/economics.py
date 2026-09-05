@@ -26,8 +26,7 @@ def dish_food_cost(recipe_items: list[dict]) -> float:
 
     Each item is a joined row: {"qty_per_dish", "unit_cost", ...}.
     """
-    total = sum(float(i["qty_per_dish"]) * float(i["unit_cost"])
-                for i in recipe_items)
+    total = sum(float(i["qty_per_dish"]) * float(i["unit_cost"]) for i in recipe_items)
     return round(total, 2)
 
 
@@ -43,13 +42,14 @@ def _recipes_by_dish(db: Database, cook_phone: str) -> dict[str, dict]:
     out = {}
     for recipe in db.get_recipes(cook_phone):
         items = db.get_recipe_items(recipe["id"])
-        out[recipe["dish_name"]] = {"recipe": recipe,
-                                    "food_cost": dish_food_cost(items)}
+        out[recipe["dish_name"]] = {
+            "recipe": recipe,
+            "food_cost": dish_food_cost(items),
+        }
     return out
 
 
-def menu_price_for_dish(db: Database, cook_phone: str,
-                        dish_name: str) -> float | None:
+def menu_price_for_dish(db: Database, cook_phone: str, dish_name: str) -> float | None:
     """Current menu price for a dish (active menu), else None."""
     for item in db.get_active_menus(cook_phone):
         if item["item_name"] == dish_name:
@@ -57,8 +57,9 @@ def menu_price_for_dish(db: Database, cook_phone: str,
     return None
 
 
-def check_menu_margins(db: Database, wa: WhatsAppClient, i18n: I18n,
-                       cook_phone: str) -> list[dict]:
+def check_menu_margins(
+    db: Database, wa: WhatsAppClient, i18n: I18n, cook_phone: str
+) -> list[dict]:
     """Pre-broadcast sweep: warn about on-menu dishes under the margin floor.
 
     Called when the cook finishes setting the menu (before it goes live) and
@@ -73,26 +74,40 @@ def check_menu_margins(db: Database, wa: WhatsAppClient, i18n: I18n,
             continue
         m = margin(price, info["food_cost"])
         if m is not None and m < S.MARGIN_FLOOR:
-            flagged.append({"dish_name": dish_name,
-                            "food_cost": info["food_cost"],
-                            "price": price, "margin": m})
+            flagged.append(
+                {
+                    "dish_name": dish_name,
+                    "food_cost": info["food_cost"],
+                    "price": price,
+                    "margin": m,
+                }
+            )
     if flagged:
         lines = [i18n.t(lang, "o_margin_alert_title")]
         for f in flagged:
-            lines.append(i18n.t(lang, "o_price_alert_line",
-                                dish=f["dish_name"],
-                                cost=money(f["food_cost"]),
-                                margin=f"{f['margin'] * 100:.1f}"))
+            lines.append(
+                i18n.t(
+                    lang,
+                    "o_price_alert_line",
+                    dish=f["dish_name"],
+                    cost=money(f["food_cost"]),
+                    margin=f"{f['margin'] * 100:.1f}",
+                )
+            )
         lines.append(i18n.t(lang, "o_margin_alert_hint"))
         wa.send_text(cook_phone, "\n".join(lines))
     return flagged
 
 
 # ── counterfactual: supplier price shock ────────────────────────────
-def apply_ingredient_price_change(db: Database, wa: WhatsAppClient,
-                                  i18n: I18n, cook_phone: str,
-                                  ingredient_id: int,
-                                  new_unit_cost: float) -> list[dict]:
+def apply_ingredient_price_change(
+    db: Database,
+    wa: WhatsAppClient,
+    i18n: I18n,
+    cook_phone: str,
+    ingredient_id: int,
+    new_unit_cost: float,
+) -> list[dict]:
     """Supplier doubled a price overnight: recompute, flag, alert.
 
     1. Persists the new unit_cost on the ingredient.
@@ -115,32 +130,44 @@ def apply_ingredient_price_change(db: Database, wa: WhatsAppClient,
     flagged: list[dict] = []
     for dish_name, info in by_dish.items():
         items = db.get_recipe_items(info["recipe"]["id"])
-        if not any(int(i["ingredient_id"]) == int(ingredient_id)
-                   for i in items):
+        if not any(int(i["ingredient_id"]) == int(ingredient_id) for i in items):
             continue
         food_cost = dish_food_cost(items)
         price = menu_price_for_dish(db, cook_phone, dish_name)
         m = margin(price, food_cost) if price else None
         if m is not None and m < S.MARGIN_FLOOR:
-            flagged.append({
-                "dish_name": dish_name,
-                "food_cost": food_cost,
-                "price": price,
-                "margin": m,
-                "ingredient": ingredient["name"],
-                "old_unit_cost": old_cost,
-                "new_unit_cost": new_cost,
-            })
+            flagged.append(
+                {
+                    "dish_name": dish_name,
+                    "food_cost": food_cost,
+                    "price": price,
+                    "margin": m,
+                    "ingredient": ingredient["name"],
+                    "old_unit_cost": old_cost,
+                    "new_unit_cost": new_cost,
+                }
+            )
 
     if flagged and price_changed:
-        lines = [i18n.t(_cook_lang(db, cook_phone), "o_price_alert_title",
-                        ingredient=ingredient["name"],
-                        old=money(old_cost), new=money(new_cost))]
+        lines = [
+            i18n.t(
+                _cook_lang(db, cook_phone),
+                "o_price_alert_title",
+                ingredient=ingredient["name"],
+                old=money(old_cost),
+                new=money(new_cost),
+            )
+        ]
         for f in flagged:
-            lines.append(i18n.t(_cook_lang(db, cook_phone), "o_price_alert_line",
-                                dish=f["dish_name"],
-                                cost=money(f["food_cost"]),
-                                margin=f"{f['margin'] * 100:.1f}"))
+            lines.append(
+                i18n.t(
+                    _cook_lang(db, cook_phone),
+                    "o_price_alert_line",
+                    dish=f["dish_name"],
+                    cost=money(f["food_cost"]),
+                    margin=f"{f['margin'] * 100:.1f}",
+                )
+            )
         lines.append(i18n.t(_cook_lang(db, cook_phone), "o_price_alert_hint"))
         wa.send_text(cook_phone, "\n".join(lines))
     return flagged
@@ -152,8 +179,9 @@ def _cook_lang(db: Database, cook_phone: str) -> str:
 
 
 # ── low-stock sweep ──────────────────────────────────────────────────
-def check_low_stock(db: Database, wa: WhatsAppClient, i18n: I18n,
-                    cook_phone: str) -> list[dict]:
+def check_low_stock(
+    db: Database, wa: WhatsAppClient, i18n: I18n, cook_phone: str
+) -> list[dict]:
     """Alert once per breaching ingredient until its stock recovers.
 
     An ingredient alerts when stock_qty <= low_stock_threshold (> 0) and no
@@ -168,9 +196,16 @@ def check_low_stock(db: Database, wa: WhatsAppClient, i18n: I18n,
             continue
         if float(ing["stock_qty"]) <= threshold:
             db.update_ingredient(ing["id"], last_alert_at=utcnow())
-            wa.send_text(cook_phone, i18n.t(
-                lang, "o_low_stock_alert", item=ing["name"],
-                stock=f"{float(ing['stock_qty']):g}", unit=ing["unit"]))
+            wa.send_text(
+                cook_phone,
+                i18n.t(
+                    lang,
+                    "o_low_stock_alert",
+                    item=ing["name"],
+                    stock=f"{float(ing['stock_qty']):g}",
+                    unit=ing["unit"],
+                ),
+            )
             alerted.append(ing)
     return alerted
 
@@ -193,14 +228,14 @@ def consume_stock_for_order(db: Database, order: dict) -> None:
             ing = db.get_ingredient(int(bom["ingredient_id"]))
             if ing is None:
                 continue
-            new_stock = max(0.0, float(ing["stock_qty"])
-                            - float(bom["qty_per_dish"]) * qty)
+            new_stock = max(
+                0.0, float(ing["stock_qty"]) - float(bom["qty_per_dish"]) * qty
+            )
             db.update_ingredient(ing["id"], stock_qty=round(new_stock, 3))
 
 
 # ── sales velocity & planning ────────────────────────────────────────
-def sales_velocity(db: Database, cook_phone: str,
-                   days: int = 7) -> dict[str, float]:
+def sales_velocity(db: Database, cook_phone: str, days: int = 7) -> dict[str, float]:
     """Dish → average units sold per day over the trailing window."""
     since = utcnow() - timedelta(days=days)
     velocity: dict[str, float] = {}
@@ -223,8 +258,14 @@ def project_weekly_food_cost(db: Database, cook_phone: str) -> dict:
             continue  # no recipe → unknown cost, skipped honestly
         weekly = round(info["food_cost"] * per_day * 7, 2)
         total += weekly
-        lines.append({"dish": dish, "per_day": per_day,
-                      "food_cost": info["food_cost"], "weekly": weekly})
+        lines.append(
+            {
+                "dish": dish,
+                "per_day": per_day,
+                "food_cost": info["food_cost"],
+                "weekly": weekly,
+            }
+        )
     return {"lines": lines, "total": round(total, 2)}
 
 
@@ -249,15 +290,20 @@ def weekly_purchase_plan(db: Database, cook_phone: str) -> list[dict]:
         if ing is None:
             continue
         buy = round(max(0.0, entry["qty"] - float(ing["stock_qty"])), 2)
-        plan.append({"ingredient": ing["name"], "unit": ing["unit"],
-                     "need_7d": round(entry["qty"], 2),
-                     "stock": float(ing["stock_qty"]), "suggest_buy": buy})
+        plan.append(
+            {
+                "ingredient": ing["name"],
+                "unit": ing["unit"],
+                "need_7d": round(entry["qty"], 2),
+                "stock": float(ing["stock_qty"]),
+                "suggest_buy": buy,
+            }
+        )
     return sorted(plan, key=lambda p: -p["suggest_buy"])
 
 
 # ── daily P&L ────────────────────────────────────────────────────────
-def daily_pnl(db: Database, cook_phone: str,
-              day: datetime | None = None) -> dict:
+def daily_pnl(db: Database, cook_phone: str, day: datetime | None = None) -> dict:
     """Revenue, food cost, opex, capex and net for one calendar day (UTC)."""
     day = day or utcnow()
     start = day.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -277,24 +323,39 @@ def daily_pnl(db: Database, cook_phone: str,
             cost = info["food_cost"] * qty
             food_cost += cost
             stat = dish_stats.setdefault(
-                name, {"qty": 0, "revenue": 0.0, "food_cost": 0.0})
+                name, {"qty": 0, "revenue": 0.0, "food_cost": 0.0}
+            )
             stat["qty"] += qty
             stat["revenue"] += float(line.get("price", 0)) * qty
             stat["food_cost"] += cost
 
-    opex = sum(float(c["amount"])
-               for c in db.get_business_costs(cook_phone, kind="opex", since=start))
-    capex = sum(float(c["amount"])
-                for c in db.get_business_costs(cook_phone, kind="capex", since=start))
+    opex = sum(
+        float(c["amount"])
+        for c in db.get_business_costs(cook_phone, kind="opex", since=start)
+    )
+    capex = sum(
+        float(c["amount"])
+        for c in db.get_business_costs(cook_phone, kind="capex", since=start)
+    )
     revenue, food_cost = round(revenue, 2), round(food_cost, 2)
     net = round(revenue - food_cost - opex - capex, 2)
     dishes = []
     for name, s in sorted(dish_stats.items(), key=lambda kv: -kv[1]["revenue"]):
         m = margin(s["revenue"], s["food_cost"])
-        dishes.append({"dish": name, "qty": s["qty"],
-                       "revenue": round(s["revenue"], 2),
-                       "food_cost": round(s["food_cost"], 2),
-                       "margin": m})
-    return {"revenue": revenue, "food_cost": food_cost,
-            "opex": round(opex, 2), "capex": round(capex, 2), "net": net,
-            "dishes": dishes}
+        dishes.append(
+            {
+                "dish": name,
+                "qty": s["qty"],
+                "revenue": round(s["revenue"], 2),
+                "food_cost": round(s["food_cost"], 2),
+                "margin": m,
+            }
+        )
+    return {
+        "revenue": revenue,
+        "food_cost": food_cost,
+        "opex": round(opex, 2),
+        "capex": round(capex, 2),
+        "net": net,
+        "dishes": dishes,
+    }

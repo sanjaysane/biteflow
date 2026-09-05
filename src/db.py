@@ -39,8 +39,14 @@ class Database(abc.ABC):
 
     # ── menus ──────────────────────────────────────────────────
     @abc.abstractmethod
-    def add_menu_item(self, cook_phone: str, item_name: str, description: str,
-                      base_price: float, language_iso: str) -> dict: ...
+    def add_menu_item(
+        self,
+        cook_phone: str,
+        item_name: str,
+        description: str,
+        base_price: float,
+        language_iso: str,
+    ) -> dict: ...
     @abc.abstractmethod
     def get_active_menus(self, cook_phone: str) -> list[dict]: ...
     @abc.abstractmethod
@@ -50,9 +56,14 @@ class Database(abc.ABC):
 
     # ── orders ─────────────────────────────────────────────────
     @abc.abstractmethod
-    def create_order(self, customer_phone: str, cook_phone: str,
-                     ordered_items: list[dict], total_sum: float,
-                     payment_type: str) -> dict: ...
+    def create_order(
+        self,
+        customer_phone: str,
+        cook_phone: str,
+        ordered_items: list[dict],
+        total_sum: float,
+        payment_type: str,
+    ) -> dict: ...
     @abc.abstractmethod
     def get_order(self, order_id: int) -> dict | None: ...
     @abc.abstractmethod
@@ -64,9 +75,15 @@ class Database(abc.ABC):
 
     # ── owner: ingredients ─────────────────────────────────────
     @abc.abstractmethod
-    def add_ingredient(self, cook_phone: str, name: str, unit: str,
-                       unit_cost: float, stock_qty: float,
-                       low_threshold: float) -> dict: ...
+    def add_ingredient(
+        self,
+        cook_phone: str,
+        name: str,
+        unit: str,
+        unit_cost: float,
+        stock_qty: float,
+        low_threshold: float,
+    ) -> dict: ...
     @abc.abstractmethod
     def get_ingredients(self, cook_phone: str) -> list[dict]: ...
     @abc.abstractmethod
@@ -76,35 +93,44 @@ class Database(abc.ABC):
 
     # ── owner: recipes (bill of materials) ─────────────────────
     @abc.abstractmethod
-    def add_recipe(self, cook_phone: str, dish_name: str,
-                   menu_item_id: int | None = None) -> dict: ...
+    def add_recipe(
+        self, cook_phone: str, dish_name: str, menu_item_id: int | None = None
+    ) -> dict: ...
     @abc.abstractmethod
     def get_recipes(self, cook_phone: str) -> list[dict]: ...
     @abc.abstractmethod
-    def add_recipe_item(self, recipe_id: int, ingredient_id: int,
-                        qty_per_dish: float) -> dict: ...
+    def add_recipe_item(
+        self, recipe_id: int, ingredient_id: int, qty_per_dish: float
+    ) -> dict: ...
     @abc.abstractmethod
     def get_recipe_items(self, recipe_id: int) -> list[dict]: ...
 
     # ── owner: suppliers & purchases ───────────────────────────
     @abc.abstractmethod
-    def add_supplier(self, cook_phone: str, name: str,
-                     contact: str = "") -> dict: ...
+    def add_supplier(self, cook_phone: str, name: str, contact: str = "") -> dict: ...
     @abc.abstractmethod
     def get_suppliers(self, cook_phone: str) -> list[dict]: ...
     @abc.abstractmethod
-    def log_purchase(self, cook_phone: str, ingredient_id: int, qty: float,
-                     unit_cost: float, supplier_id: int | None = None) -> dict: ...
+    def log_purchase(
+        self,
+        cook_phone: str,
+        ingredient_id: int,
+        qty: float,
+        unit_cost: float,
+        supplier_id: int | None = None,
+    ) -> dict: ...
     @abc.abstractmethod
     def get_purchases(self, cook_phone: str, since=None) -> list[dict]: ...
 
     # ── owner: capex / opex ledger ─────────────────────────────
     @abc.abstractmethod
-    def add_business_cost(self, cook_phone: str, kind: str, label: str,
-                          amount: float) -> dict: ...
+    def add_business_cost(
+        self, cook_phone: str, kind: str, label: str, amount: float
+    ) -> dict: ...
     @abc.abstractmethod
-    def get_business_costs(self, cook_phone: str, kind: str | None = None,
-                           since=None) -> list[dict]: ...
+    def get_business_costs(
+        self, cook_phone: str, kind: str | None = None, since=None
+    ) -> list[dict]: ...
 
     # ── owner: finance queries ─────────────────────────────────
     @abc.abstractmethod
@@ -114,8 +140,9 @@ class Database(abc.ABC):
 
     # ── marketing: referrals ───────────────────────────────────
     @abc.abstractmethod
-    def create_referral(self, cook_phone: str, code: str, referrer_phone: str,
-                        reward_amount: float) -> dict: ...
+    def create_referral(
+        self, cook_phone: str, code: str, referrer_phone: str, reward_amount: float
+    ) -> dict: ...
     @abc.abstractmethod
     def get_referral(self, referral_id: int) -> dict | None: ...
     @abc.abstractmethod
@@ -123,26 +150,29 @@ class Database(abc.ABC):
     @abc.abstractmethod
     def get_referrals_for_cook(self, cook_phone: str) -> list[dict]: ...
     @abc.abstractmethod
-    def set_referral_reward(self, referral_id: int,
-                            reward_amount: float) -> dict | None: ...
+    def set_referral_reward(
+        self, referral_id: int, reward_amount: float
+    ) -> dict | None: ...
     @abc.abstractmethod
-    def record_redemption(self, referral_id: int, redeemer_phone: str,
-                          order_id: int | None = None) -> bool: ...
+    def record_redemption(
+        self, referral_id: int, redeemer_phone: str, order_id: int | None = None
+    ) -> bool: ...
     @abc.abstractmethod
-    def get_referral_by_id(self, cook_phone: str,
-                           referral_id: int) -> dict | None: ...
+    def get_referral_by_id(self, cook_phone: str, referral_id: int) -> dict | None: ...
     @abc.abstractmethod
     def has_redeemed(self, referral_id: int, redeemer_phone: str) -> bool: ...
     @abc.abstractmethod
-    def add_credit_ledger(self, cook_phone: str, phone: str, delta: float,
-                          reason: str = "") -> dict: ...
+    def add_credit_ledger(
+        self, cook_phone: str, phone: str, delta: float, reason: str = ""
+    ) -> dict: ...
     @abc.abstractmethod
     def get_credit_balance(self, cook_phone: str, phone: str) -> float: ...
 
     # ── marketing: offers ──────────────────────────────────────
     @abc.abstractmethod
-    def set_offer(self, cook_phone: str, offer_type: str, value_text: str,
-                  active: bool = True) -> dict: ...
+    def set_offer(
+        self, cook_phone: str, offer_type: str, value_text: str, active: bool = True
+    ) -> dict: ...
     @abc.abstractmethod
     def get_active_offer(self, cook_phone: str) -> dict | None: ...
     @abc.abstractmethod
@@ -154,13 +184,15 @@ class Database(abc.ABC):
     @abc.abstractmethod
     def mark_campaign_sent(self, campaign_id: int, sent_count: int) -> None: ...
     @abc.abstractmethod
-    def set_optin(self, cook_phone: str, customer_phone: str,
-                  opted_in: bool) -> None: ...
+    def set_optin(
+        self, cook_phone: str, customer_phone: str, opted_in: bool
+    ) -> None: ...
     @abc.abstractmethod
     def get_opted_in_customers(self, cook_phone: str) -> list[str]: ...
     @abc.abstractmethod
-    def get_last_winback_at(self, cook_phone: str,
-                            customer_phone: str) -> str | None: ...
+    def get_last_winback_at(
+        self, cook_phone: str, customer_phone: str
+    ) -> str | None: ...
     @abc.abstractmethod
     def set_winback_sent(self, cook_phone: str, customer_phone: str) -> None: ...
     @abc.abstractmethod
@@ -223,8 +255,14 @@ class FakeDatabase(Database):
         self.sessions[phone] = json.loads(json.dumps(session))
 
     # menus
-    def add_menu_item(self, cook_phone: str, item_name: str, description: str,
-                      base_price: float, language_iso: str) -> dict:
+    def add_menu_item(
+        self,
+        cook_phone: str,
+        item_name: str,
+        description: str,
+        base_price: float,
+        language_iso: str,
+    ) -> dict:
         item = {
             "id": next(self._ids),
             "cook_phone": cook_phone,
@@ -240,19 +278,27 @@ class FakeDatabase(Database):
 
     def get_active_menus(self, cook_phone: str) -> list[dict]:
         return sorted(
-            (m for m in self.menus.values()
-             if m["cook_phone"] == cook_phone and m["active_status"]),
+            (
+                m
+                for m in self.menus.values()
+                if m["cook_phone"] == cook_phone and m["active_status"]
+            ),
             key=lambda m: m["id"],
         )
 
     def get_cooks_with_menus(self) -> list[dict]:
-        phones = sorted({m["cook_phone"] for m in self.menus.values()
-                         if m["active_status"]})
+        phones = sorted(
+            {m["cook_phone"] for m in self.menus.values() if m["active_status"]}
+        )
         out = []
         for p in phones:
             user = self.users.get(p, {})
-            out.append({"phone_number": p,
-                        "preferred_language": user.get("preferred_language", "en")})
+            out.append(
+                {
+                    "phone_number": p,
+                    "preferred_language": user.get("preferred_language", "en"),
+                }
+            )
         return out
 
     def deactivate_menus(self, cook_phone: str) -> None:
@@ -261,9 +307,14 @@ class FakeDatabase(Database):
                 m["active_status"] = False
 
     # orders
-    def create_order(self, customer_phone: str, cook_phone: str,
-                     ordered_items: list[dict], total_sum: float,
-                     payment_type: str) -> dict:
+    def create_order(
+        self,
+        customer_phone: str,
+        cook_phone: str,
+        ordered_items: list[dict],
+        total_sum: float,
+        payment_type: str,
+    ) -> dict:
         order = {
             "id": next(self._ids),
             "customer_phone": customer_phone,
@@ -295,23 +346,30 @@ class FakeDatabase(Database):
 
     def _open(self, rows: list[dict]) -> list[dict]:
         return sorted(
-            (o for o in rows
-             if o["order_status"] not in ("completed", "cancelled")),
+            (o for o in rows if o["order_status"] not in ("completed", "cancelled")),
             key=lambda o: o["creation_time"],
         )
 
     def get_open_orders_for_cook(self, cook_phone: str) -> list[dict]:
-        return self._open([o for o in self.orders.values()
-                           if o["cook_phone"] == cook_phone])
+        return self._open(
+            [o for o in self.orders.values() if o["cook_phone"] == cook_phone]
+        )
 
     def get_open_orders_for_customer(self, customer_phone: str) -> list[dict]:
-        return self._open([o for o in self.orders.values()
-                           if o["customer_phone"] == customer_phone])
+        return self._open(
+            [o for o in self.orders.values() if o["customer_phone"] == customer_phone]
+        )
 
     # ── owner: ingredients ─────────────────────────────────────
-    def add_ingredient(self, cook_phone: str, name: str, unit: str,
-                       unit_cost: float, stock_qty: float,
-                       low_threshold: float) -> dict:
+    def add_ingredient(
+        self,
+        cook_phone: str,
+        name: str,
+        unit: str,
+        unit_cost: float,
+        stock_qty: float,
+        low_threshold: float,
+    ) -> dict:
         ing = {
             "id": next(self._ids),
             "cook_phone": cook_phone,
@@ -328,8 +386,7 @@ class FakeDatabase(Database):
 
     def get_ingredients(self, cook_phone: str) -> list[dict]:
         return sorted(
-            (i for i in self.ingredients.values()
-             if i["cook_phone"] == cook_phone),
+            (i for i in self.ingredients.values() if i["cook_phone"] == cook_phone),
             key=lambda i: i["id"],
         )
 
@@ -340,16 +397,23 @@ class FakeDatabase(Database):
         ing = self.ingredients.get(int(ingredient_id))
         if ing is None:
             return None
-        allowed = {"name", "unit", "unit_cost", "stock_qty",
-                   "low_stock_threshold", "last_alert_at"}
+        allowed = {
+            "name",
+            "unit",
+            "unit_cost",
+            "stock_qty",
+            "low_stock_threshold",
+            "last_alert_at",
+        }
         for k, v in fields.items():
             if k in allowed:
                 ing[k] = v
         return ing
 
     # ── owner: recipes ─────────────────────────────────────────
-    def add_recipe(self, cook_phone: str, dish_name: str,
-                   menu_item_id: int | None = None) -> dict:
+    def add_recipe(
+        self, cook_phone: str, dish_name: str, menu_item_id: int | None = None
+    ) -> dict:
         recipe = {
             "id": next(self._ids),
             "cook_phone": cook_phone,
@@ -362,13 +426,13 @@ class FakeDatabase(Database):
 
     def get_recipes(self, cook_phone: str) -> list[dict]:
         return sorted(
-            (r for r in self.recipes.values()
-             if r["cook_phone"] == cook_phone),
+            (r for r in self.recipes.values() if r["cook_phone"] == cook_phone),
             key=lambda r: r["id"],
         )
 
-    def add_recipe_item(self, recipe_id: int, ingredient_id: int,
-                        qty_per_dish: float) -> dict:
+    def add_recipe_item(
+        self, recipe_id: int, ingredient_id: int, qty_per_dish: float
+    ) -> dict:
         item = {
             "id": next(self._ids),
             "recipe_id": int(recipe_id),
@@ -384,15 +448,18 @@ class FakeDatabase(Database):
             if int(it["recipe_id"]) != int(recipe_id):
                 continue
             ing = self.ingredients.get(int(it["ingredient_id"]), {})
-            out.append({**it,
-                        "ingredient_name": ing.get("name", "?"),
-                        "unit": ing.get("unit", "?"),
-                        "unit_cost": float(ing.get("unit_cost", 0))})
+            out.append(
+                {
+                    **it,
+                    "ingredient_name": ing.get("name", "?"),
+                    "unit": ing.get("unit", "?"),
+                    "unit_cost": float(ing.get("unit_cost", 0)),
+                }
+            )
         return sorted(out, key=lambda i: i["id"])
 
     # ── owner: suppliers & purchases ───────────────────────────
-    def add_supplier(self, cook_phone: str, name: str,
-                     contact: str = "") -> dict:
+    def add_supplier(self, cook_phone: str, name: str, contact: str = "") -> dict:
         sup = {
             "id": next(self._ids),
             "cook_phone": cook_phone,
@@ -405,13 +472,18 @@ class FakeDatabase(Database):
 
     def get_suppliers(self, cook_phone: str) -> list[dict]:
         return sorted(
-            (s for s in self.suppliers.values()
-             if s["cook_phone"] == cook_phone),
+            (s for s in self.suppliers.values() if s["cook_phone"] == cook_phone),
             key=lambda s: s["id"],
         )
 
-    def log_purchase(self, cook_phone: str, ingredient_id: int, qty: float,
-                     unit_cost: float, supplier_id: int | None = None) -> dict:
+    def log_purchase(
+        self,
+        cook_phone: str,
+        ingredient_id: int,
+        qty: float,
+        unit_cost: float,
+        supplier_id: int | None = None,
+    ) -> dict:
         purchase = {
             "id": next(self._ids),
             "cook_phone": cook_phone,
@@ -431,14 +503,18 @@ class FakeDatabase(Database):
         return purchase
 
     def get_purchases(self, cook_phone: str, since=None) -> list[dict]:
-        rows = [p for p in self.purchases.values()
-                if p["cook_phone"] == cook_phone
-                and (since is None or p["purchased_at"] >= since)]
+        rows = [
+            p
+            for p in self.purchases.values()
+            if p["cook_phone"] == cook_phone
+            and (since is None or p["purchased_at"] >= since)
+        ]
         return sorted(rows, key=lambda p: p["purchased_at"], reverse=True)
 
     # ── owner: business costs ──────────────────────────────────
-    def add_business_cost(self, cook_phone: str, kind: str, label: str,
-                          amount: float) -> dict:
+    def add_business_cost(
+        self, cook_phone: str, kind: str, label: str, amount: float
+    ) -> dict:
         entry = {
             "id": next(self._ids),
             "cook_phone": cook_phone,
@@ -450,20 +526,27 @@ class FakeDatabase(Database):
         self.business_costs[entry["id"]] = entry
         return entry
 
-    def get_business_costs(self, cook_phone: str, kind: str | None = None,
-                           since=None) -> list[dict]:
-        rows = [c for c in self.business_costs.values()
-                if c["cook_phone"] == cook_phone
-                and (kind is None or c["kind"] == kind)
-                and (since is None or c["logged_at"] >= since)]
+    def get_business_costs(
+        self, cook_phone: str, kind: str | None = None, since=None
+    ) -> list[dict]:
+        rows = [
+            c
+            for c in self.business_costs.values()
+            if c["cook_phone"] == cook_phone
+            and (kind is None or c["kind"] == kind)
+            and (since is None or c["logged_at"] >= since)
+        ]
         return sorted(rows, key=lambda c: c["logged_at"], reverse=True)
 
     # ── owner: finance queries ─────────────────────────────────
     def get_completed_orders(self, cook_phone: str, since=None) -> list[dict]:
-        rows = [o for o in self.orders.values()
-                if o["cook_phone"] == cook_phone
-                and o["order_status"] == "completed"
-                and (since is None or o["creation_time"] >= since)]
+        rows = [
+            o
+            for o in self.orders.values()
+            if o["cook_phone"] == cook_phone
+            and o["order_status"] == "completed"
+            and (since is None or o["creation_time"] >= since)
+        ]
         return sorted(rows, key=lambda o: o["creation_time"])
 
     def get_customer_last_order(self, cook_phone: str) -> dict:
@@ -477,8 +560,9 @@ class FakeDatabase(Database):
         return {p: t.isoformat() for p, t in last.items()}
 
     # ── marketing: referrals ───────────────────────────────────
-    def create_referral(self, cook_phone: str, code: str, referrer_phone: str,
-                        reward_amount: float) -> dict:
+    def create_referral(
+        self, cook_phone: str, code: str, referrer_phone: str, reward_amount: float
+    ) -> dict:
         ref = {
             "id": next(self._ids),
             "cook_phone": cook_phone,
@@ -501,26 +585,29 @@ class FakeDatabase(Database):
 
     def get_referrals_for_cook(self, cook_phone: str) -> list[dict]:
         return sorted(
-            (r for r in self.referrals.values()
-             if r["cook_phone"] == cook_phone),
+            (r for r in self.referrals.values() if r["cook_phone"] == cook_phone),
             key=lambda r: r["id"],
         )
 
-    def set_referral_reward(self, referral_id: int,
-                            reward_amount: float) -> dict | None:
+    def set_referral_reward(
+        self, referral_id: int, reward_amount: float
+    ) -> dict | None:
         ref = self.referrals.get(int(referral_id))
         if ref is None:
             return None
         ref["reward_amount"] = float(reward_amount)
         return ref
 
-    def record_redemption(self, referral_id: int, redeemer_phone: str,
-                          order_id: int | None = None) -> bool:
+    def record_redemption(
+        self, referral_id: int, redeemer_phone: str, order_id: int | None = None
+    ) -> bool:
         for red in self.referral_redemptions.values():
             # Mirrors Postgres: NULL order_ids never conflict with each other.
-            if (red["referral_id"] == int(referral_id)
-                    and order_id is not None
-                    and red["order_id"] == order_id):
+            if (
+                red["referral_id"] == int(referral_id)
+                and order_id is not None
+                and red["order_id"] == order_id
+            ):
                 return False  # already finalized for this order
         red = {
             "id": next(self._ids),
@@ -532,20 +619,22 @@ class FakeDatabase(Database):
         self.referral_redemptions[red["id"]] = red
         return True
 
-    def get_referral_by_id(self, cook_phone: str,
-                           referral_id: int) -> dict | None:
+    def get_referral_by_id(self, cook_phone: str, referral_id: int) -> dict | None:
         ref = self.referrals.get(int(referral_id))
         if ref is not None and ref["cook_phone"] != cook_phone:
             return None
         return ref
 
     def has_redeemed(self, referral_id: int, redeemer_phone: str) -> bool:
-        return any(r["referral_id"] == int(referral_id)
-                   and r["redeemer_phone"] == redeemer_phone
-                   for r in self.referral_redemptions.values())
+        return any(
+            r["referral_id"] == int(referral_id)
+            and r["redeemer_phone"] == redeemer_phone
+            for r in self.referral_redemptions.values()
+        )
 
-    def add_credit_ledger(self, cook_phone: str, phone: str, delta: float,
-                          reason: str = "") -> dict:
+    def add_credit_ledger(
+        self, cook_phone: str, phone: str, delta: float, reason: str = ""
+    ) -> dict:
         entry = {
             "id": next(self._ids),
             "cook_phone": cook_phone,
@@ -558,12 +647,19 @@ class FakeDatabase(Database):
         return entry
 
     def get_credit_balance(self, cook_phone: str, phone: str) -> float:
-        return round(sum(e["delta"] for e in self.credit_ledger.values()
-                         if e["cook_phone"] == cook_phone and e["phone"] == phone), 2)
+        return round(
+            sum(
+                e["delta"]
+                for e in self.credit_ledger.values()
+                if e["cook_phone"] == cook_phone and e["phone"] == phone
+            ),
+            2,
+        )
 
     # ── marketing: offers ──────────────────────────────────────
-    def set_offer(self, cook_phone: str, offer_type: str, value_text: str,
-                  active: bool = True) -> dict:
+    def set_offer(
+        self, cook_phone: str, offer_type: str, value_text: str, active: bool = True
+    ) -> dict:
         for o in self.marketing_offers.values():
             if o["cook_phone"] == cook_phone and o["offer_type"] == offer_type:
                 o["value_text"] = value_text
@@ -581,9 +677,12 @@ class FakeDatabase(Database):
         return offer
 
     def get_active_offer(self, cook_phone: str) -> dict | None:
-        actives = [o for o in self.marketing_offers.values()
-                   if o["cook_phone"] == cook_phone and o["active"]]
-        return sorted(actives, key=lambda o: o["id"])[-1] if actives else None
+        actives = [
+            o
+            for o in self.marketing_offers.values()
+            if o["cook_phone"] == cook_phone and o["active"]
+        ]
+        return max(actives, key=lambda o: o["id"], default=None)
 
     def deactivate_offers(self, cook_phone: str) -> None:
         for o in self.marketing_offers.values():
@@ -608,8 +707,7 @@ class FakeDatabase(Database):
         if camp is not None:
             camp["sent_count"] = sent_count
 
-    def set_optin(self, cook_phone: str, customer_phone: str,
-                  opted_in: bool) -> None:
+    def set_optin(self, cook_phone: str, customer_phone: str, opted_in: bool) -> None:
         key = (cook_phone, customer_phone)
         row = self.marketing_optins.get(key)
         if row is None:
@@ -626,11 +724,12 @@ class FakeDatabase(Database):
 
     def get_opted_in_customers(self, cook_phone: str) -> list[str]:
         return sorted(
-            key[1] for key, row in self.marketing_optins.items()
-            if key[0] == cook_phone and row["opted_in"])
+            key[1]
+            for key, row in self.marketing_optins.items()
+            if key[0] == cook_phone and row["opted_in"]
+        )
 
-    def get_last_winback_at(self, cook_phone: str,
-                            customer_phone: str) -> str | None:
+    def get_last_winback_at(self, cook_phone: str, customer_phone: str) -> str | None:
         row = self.marketing_optins.get((cook_phone, customer_phone))
         if row is None or row.get("last_winback_at") is None:
             return None
@@ -670,6 +769,7 @@ class PostgresDatabase(Database):
     def _conn(self):
         import psycopg
         from psycopg.rows import dict_row
+
         return psycopg.connect(self._url, row_factory=dict_row)
 
     @staticmethod
@@ -727,17 +827,29 @@ class PostgresDatabase(Database):
                      (phone_number, system_role, state, language, data, updated_at)
                    VALUES (%s, %s::system_role, %s, %s, %s::jsonb, now())
                    ON CONFLICT (phone_number) DO UPDATE SET
+                     system_role = EXCLUDED.system_role,
                      state = EXCLUDED.state,
                      language = EXCLUDED.language,
                      data = EXCLUDED.data,
                      updated_at = now()""",
-                (phone, session["role"], session["state"],
-                 session.get("lang", "en"), json.dumps(session.get("data", {}))),
+                (
+                    phone,
+                    session["role"],
+                    session["state"],
+                    session.get("lang", "en"),
+                    json.dumps(session.get("data", {})),
+                ),
             )
 
     # ── menus ──
-    def add_menu_item(self, cook_phone: str, item_name: str, description: str,
-                      base_price: float, language_iso: str) -> dict:
+    def add_menu_item(
+        self,
+        cook_phone: str,
+        item_name: str,
+        description: str,
+        base_price: float,
+        language_iso: str,
+    ) -> dict:
         with self._conn() as c, c.cursor() as cur:
             cur.execute(
                 """INSERT INTO menus
@@ -775,9 +887,14 @@ class PostgresDatabase(Database):
             )
 
     # ── orders ──
-    def create_order(self, customer_phone: str, cook_phone: str,
-                     ordered_items: list[dict], total_sum: float,
-                     payment_type: str) -> dict:
+    def create_order(
+        self,
+        customer_phone: str,
+        cook_phone: str,
+        ordered_items: list[dict],
+        total_sum: float,
+        payment_type: str,
+    ) -> dict:
         with self._conn() as c, c.cursor() as cur:
             cur.execute(
                 """INSERT INTO orders
@@ -785,8 +902,13 @@ class PostgresDatabase(Database):
                       payment_type)
                    VALUES (%s, %s, %s::jsonb, %s, %s::payment_type)
                    RETURNING *""",
-                (customer_phone, cook_phone, json.dumps(ordered_items),
-                 total_sum, payment_type),
+                (
+                    customer_phone,
+                    cook_phone,
+                    json.dumps(ordered_items),
+                    total_sum,
+                    payment_type,
+                ),
             )
             return self._one(cur)  # type: ignore[return-value]
 
@@ -798,20 +920,30 @@ class PostgresDatabase(Database):
     def update_order(self, order_id: int, **fields) -> dict | None:
         if not fields:
             return self.get_order(order_id)
-        allowed = {"ordered_items", "total_sum", "payment_type", "payment_status",
-                   "payment_proof_ref", "order_status", "delivery_target_time",
-                   "discount_total", "discount_desc"}
+        allowed = {
+            "ordered_items",
+            "total_sum",
+            "payment_type",
+            "payment_status",
+            "payment_proof_ref",
+            "order_status",
+            "delivery_target_time",
+            "discount_total",
+            "discount_desc",
+        }
         cols = [k for k in fields if k in allowed]
         if not cols:
             return self.get_order(order_id)
         set_clause = ", ".join(f"{k} = %s" for k in cols)
-        params: list = [json.dumps(fields[k]) if k == "ordered_items" else fields[k]
-                        for k in cols]
+        params: list = [
+            json.dumps(fields[k]) if k == "ordered_items" else fields[k] for k in cols
+        ]
         # cast enum columns explicitly
-        set_clause = (set_clause
-                      .replace("payment_type = %s", "payment_type = %s::payment_type")
-                      .replace("payment_status = %s", "payment_status = %s::payment_status")
-                      .replace("order_status = %s", "order_status = %s::order_status"))
+        set_clause = (
+            set_clause.replace("payment_type = %s", "payment_type = %s::payment_type")
+            .replace("payment_status = %s", "payment_status = %s::payment_status")
+            .replace("order_status = %s", "order_status = %s::order_status")
+        )
         with self._conn() as c, c.cursor() as cur:
             cur.execute(
                 f"UPDATE orders SET {set_clause} WHERE id = %s RETURNING *",
@@ -842,9 +974,15 @@ class PostgresDatabase(Database):
             return [dict(r) for r in cur.fetchall()]
 
     # ── owner: ingredients ─────────────────────────────────────
-    def add_ingredient(self, cook_phone: str, name: str, unit: str,
-                       unit_cost: float, stock_qty: float,
-                       low_threshold: float) -> dict:
+    def add_ingredient(
+        self,
+        cook_phone: str,
+        name: str,
+        unit: str,
+        unit_cost: float,
+        stock_qty: float,
+        low_threshold: float,
+    ) -> dict:
         with self._conn() as c, c.cursor() as cur:
             cur.execute(
                 """INSERT INTO ingredients
@@ -864,15 +1002,22 @@ class PostgresDatabase(Database):
 
     def get_ingredient(self, ingredient_id: int) -> dict | None:
         with self._conn() as c, c.cursor() as cur:
-            cur.execute("SELECT * FROM ingredients WHERE id = %s",
-                        (int(ingredient_id),))
+            cur.execute(
+                "SELECT * FROM ingredients WHERE id = %s", (int(ingredient_id),)
+            )
             return self._one(cur)
 
     def update_ingredient(self, ingredient_id: int, **fields) -> dict | None:
         if not fields:
             return self.get_ingredient(int(ingredient_id))
-        allowed = {"name", "unit", "unit_cost", "stock_qty",
-                   "low_stock_threshold", "last_alert_at"}
+        allowed = {
+            "name",
+            "unit",
+            "unit_cost",
+            "stock_qty",
+            "low_stock_threshold",
+            "last_alert_at",
+        }
         cols = [k for k in fields if k in allowed]
         if not cols:
             return self.get_ingredient(int(ingredient_id))
@@ -885,8 +1030,9 @@ class PostgresDatabase(Database):
             return self._one(cur)
 
     # ── owner: recipes ─────────────────────────────────────────
-    def add_recipe(self, cook_phone: str, dish_name: str,
-                   menu_item_id: int | None = None) -> dict:
+    def add_recipe(
+        self, cook_phone: str, dish_name: str, menu_item_id: int | None = None
+    ) -> dict:
         with self._conn() as c, c.cursor() as cur:
             cur.execute(
                 """INSERT INTO recipes (cook_phone, dish_name, menu_item_id)
@@ -903,8 +1049,9 @@ class PostgresDatabase(Database):
             )
             return [dict(r) for r in cur.fetchall()]
 
-    def add_recipe_item(self, recipe_id: int, ingredient_id: int,
-                        qty_per_dish: float) -> dict:
+    def add_recipe_item(
+        self, recipe_id: int, ingredient_id: int, qty_per_dish: float
+    ) -> dict:
         with self._conn() as c, c.cursor() as cur:
             cur.execute(
                 """INSERT INTO recipe_items (recipe_id, ingredient_id, qty_per_dish)
@@ -929,8 +1076,7 @@ class PostgresDatabase(Database):
             return [dict(r) for r in cur.fetchall()]
 
     # ── owner: suppliers & purchases ───────────────────────────
-    def add_supplier(self, cook_phone: str, name: str,
-                     contact: str = "") -> dict:
+    def add_supplier(self, cook_phone: str, name: str, contact: str = "") -> dict:
         with self._conn() as c, c.cursor() as cur:
             cur.execute(
                 """INSERT INTO suppliers (cook_phone, name, contact)
@@ -947,8 +1093,14 @@ class PostgresDatabase(Database):
             )
             return [dict(r) for r in cur.fetchall()]
 
-    def log_purchase(self, cook_phone: str, ingredient_id: int, qty: float,
-                     unit_cost: float, supplier_id: int | None = None) -> dict:
+    def log_purchase(
+        self,
+        cook_phone: str,
+        ingredient_id: int,
+        qty: float,
+        unit_cost: float,
+        supplier_id: int | None = None,
+    ) -> dict:
         with self._conn() as c, c.cursor() as cur:
             cur.execute(
                 """INSERT INTO purchases
@@ -988,8 +1140,9 @@ class PostgresDatabase(Database):
             return [dict(r) for r in cur.fetchall()]
 
     # ── owner: business costs ──────────────────────────────────
-    def add_business_cost(self, cook_phone: str, kind: str, label: str,
-                          amount: float) -> dict:
+    def add_business_cost(
+        self, cook_phone: str, kind: str, label: str, amount: float
+    ) -> dict:
         with self._conn() as c, c.cursor() as cur:
             cur.execute(
                 """INSERT INTO business_costs (cook_phone, kind, label, amount)
@@ -998,10 +1151,11 @@ class PostgresDatabase(Database):
             )
             return self._one(cur)  # type: ignore[return-value]
 
-    def get_business_costs(self, cook_phone: str, kind: str | None = None,
-                           since=None) -> list[dict]:
+    def get_business_costs(
+        self, cook_phone: str, kind: str | None = None, since=None
+    ) -> list[dict]:
         with self._conn() as c, c.cursor() as cur:
-            query = ("SELECT * FROM business_costs WHERE cook_phone = %s")
+            query = "SELECT * FROM business_costs WHERE cook_phone = %s"
             params: list = [cook_phone]
             if kind is not None:
                 query += " AND kind = %s"
@@ -1042,12 +1196,14 @@ class PostgresDatabase(Database):
                    GROUP BY customer_phone""",
                 (cook_phone,),
             )
-            return {r["customer_phone"]: r["last_ts"].isoformat()
-                    for r in cur.fetchall()}
+            return {
+                r["customer_phone"]: r["last_ts"].isoformat() for r in cur.fetchall()
+            }
 
     # ── marketing: referrals ───────────────────────────────────
-    def create_referral(self, cook_phone: str, code: str, referrer_phone: str,
-                        reward_amount: float) -> dict:
+    def create_referral(
+        self, cook_phone: str, code: str, referrer_phone: str, reward_amount: float
+    ) -> dict:
         with self._conn() as c, c.cursor() as cur:
             cur.execute(
                 """INSERT INTO referrals
@@ -1059,14 +1215,15 @@ class PostgresDatabase(Database):
 
     def get_referral(self, referral_id: int) -> dict | None:
         with self._conn() as c, c.cursor() as cur:
-            cur.execute("SELECT * FROM referrals WHERE id = %s",
-                        (int(referral_id),))
+            cur.execute("SELECT * FROM referrals WHERE id = %s", (int(referral_id),))
             return self._one(cur)
 
     def get_referral_by_code(self, code: str) -> dict | None:
         with self._conn() as c, c.cursor() as cur:
-            cur.execute("SELECT * FROM referrals WHERE code = %s",
-                        ((code or "").strip().upper(),))
+            cur.execute(
+                "SELECT * FROM referrals WHERE code = %s",
+                ((code or "").strip().upper(),),
+            )
             return self._one(cur)
 
     def get_referrals_for_cook(self, cook_phone: str) -> list[dict]:
@@ -1077,8 +1234,9 @@ class PostgresDatabase(Database):
             )
             return [dict(r) for r in cur.fetchall()]
 
-    def set_referral_reward(self, referral_id: int,
-                            reward_amount: float) -> dict | None:
+    def set_referral_reward(
+        self, referral_id: int, reward_amount: float
+    ) -> dict | None:
         with self._conn() as c, c.cursor() as cur:
             cur.execute(
                 """UPDATE referrals SET reward_amount = %s
@@ -1087,8 +1245,9 @@ class PostgresDatabase(Database):
             )
             return self._one(cur)
 
-    def record_redemption(self, referral_id: int, redeemer_phone: str,
-                          order_id: int | None = None) -> bool:
+    def record_redemption(
+        self, referral_id: int, redeemer_phone: str, order_id: int | None = None
+    ) -> bool:
         with self._conn() as c, c.cursor() as cur:
             cur.execute(
                 """INSERT INTO referral_redemptions
@@ -1100,8 +1259,7 @@ class PostgresDatabase(Database):
             )
             return cur.fetchone() is not None
 
-    def get_referral_by_id(self, cook_phone: str,
-                           referral_id: int) -> dict | None:
+    def get_referral_by_id(self, cook_phone: str, referral_id: int) -> dict | None:
         with self._conn() as c, c.cursor() as cur:
             cur.execute(
                 "SELECT * FROM referrals WHERE id = %s AND cook_phone = %s",
@@ -1118,8 +1276,9 @@ class PostgresDatabase(Database):
             )
             return cur.fetchone() is not None
 
-    def add_credit_ledger(self, cook_phone: str, phone: str, delta: float,
-                          reason: str = "") -> dict:
+    def add_credit_ledger(
+        self, cook_phone: str, phone: str, delta: float, reason: str = ""
+    ) -> dict:
         with self._conn() as c, c.cursor() as cur:
             cur.execute(
                 """INSERT INTO referral_credit_ledger
@@ -1140,8 +1299,9 @@ class PostgresDatabase(Database):
             return float(self._one(cur)["bal"])  # type: ignore[index]
 
     # ── marketing: offers ──────────────────────────────────────
-    def set_offer(self, cook_phone: str, offer_type: str, value_text: str,
-                  active: bool = True) -> dict:
+    def set_offer(
+        self, cook_phone: str, offer_type: str, value_text: str, active: bool = True
+    ) -> dict:
         with self._conn() as c, c.cursor() as cur:
             cur.execute(
                 """INSERT INTO marketing_offers
@@ -1188,8 +1348,7 @@ class PostgresDatabase(Database):
                 (sent_count, int(campaign_id)),
             )
 
-    def set_optin(self, cook_phone: str, customer_phone: str,
-                  opted_in: bool) -> None:
+    def set_optin(self, cook_phone: str, customer_phone: str, opted_in: bool) -> None:
         with self._conn() as c, c.cursor() as cur:
             cur.execute(
                 """INSERT INTO marketing_optins
@@ -1210,8 +1369,7 @@ class PostgresDatabase(Database):
             )
             return [r["customer_phone"] for r in cur.fetchall()]
 
-    def get_last_winback_at(self, cook_phone: str,
-                            customer_phone: str) -> str | None:
+    def get_last_winback_at(self, cook_phone: str, customer_phone: str) -> str | None:
         with self._conn() as c, c.cursor() as cur:
             cur.execute(
                 """SELECT last_winback_at FROM marketing_optins

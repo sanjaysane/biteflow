@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from .db import Database
 from .i18n import I18n
@@ -15,12 +15,12 @@ class Ctx:
     db: Database
     wa: WhatsAppClient
     i18n: I18n
-    phone: str                      # E.164 sender
-    user: dict | None               # users row or None
-    session: dict                   # {"role","state","lang","data"}
-    text: str | None                # message text (None for non-text)
-    msg_type: str                   # "text" | "image" | "other"
-    media_id: str | None = None     # Meta media id for images
+    phone: str  # E.164 sender
+    user: dict | None  # users row or None
+    session: dict  # {"role","state","lang","data"}
+    text: str | None  # message text (None for non-text)
+    msg_type: str  # "text" | "image" | "other"
+    media_id: str | None = None  # Meta media id for images
     lang: str = "en"
     default_lang: str = "en"
 
@@ -37,10 +37,12 @@ class Ctx:
         self.session.setdefault("data", {}).update(data_updates)
         self.db.save_session(self.phone, self.session)
 
-    def set_state_for(self, phone: str, role: str, state: str,
-                      lang: str, **data) -> None:
-        self.db.save_session(phone, {"role": role, "state": state,
-                                     "lang": lang, "data": data})
+    def set_state_for(
+        self, phone: str, role: str, state: str, lang: str, **data
+    ) -> None:
+        self.db.save_session(
+            phone, {"role": role, "state": state, "lang": lang, "data": data}
+        )
 
 
 # ── Secure input parsing ───────────────────────────────────────────

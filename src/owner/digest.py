@@ -16,9 +16,13 @@ from ..whatsapp import WhatsAppClient
 from .economics import daily_pnl
 
 
-def send_daily_digest(db: Database, wa: WhatsAppClient, i18n: I18n,
-                      cook_phone: str,
-                      day: datetime | None = None) -> dict:
+def send_daily_digest(
+    db: Database,
+    wa: WhatsAppClient,
+    i18n: I18n,
+    cook_phone: str,
+    day: datetime | None = None,
+) -> dict:
     """Compute today's P&L and WhatsApp it to the cook. Returns the P&L."""
     pnl = daily_pnl(db, cook_phone, day=day)
     user = db.get_user(cook_phone) or {}
@@ -32,8 +36,15 @@ def send_daily_digest(db: Database, wa: WhatsAppClient, i18n: I18n,
     lines.append(i18n.t(lang, "o_digest_net", net=money(pnl["net"])))
     for d in pnl["dishes"]:
         m = f"{d['margin'] * 100:.0f}" if d["margin"] is not None else "–"
-        lines.append(i18n.t(lang, "o_digest_dish", dish=d["dish"],
-                            qty=d["qty"], rev=money(d["revenue"]),
-                            margin=m))
+        lines.append(
+            i18n.t(
+                lang,
+                "o_digest_dish",
+                dish=d["dish"],
+                qty=d["qty"],
+                rev=money(d["revenue"]),
+                margin=m,
+            )
+        )
     wa.send_text(cook_phone, "\n".join(lines))
     return pnl

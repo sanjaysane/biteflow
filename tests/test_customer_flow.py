@@ -13,11 +13,11 @@ def test_invalid_menu_number_rejected(db, wa, send, customer_at_menu):
 
     bodies = [b for to, b in wa.sent if to == CUST]
     assert any("not on the menu" in b for b in bodies)  # polite re-prompt …
-    assert "Veg Pulao" in wa.last_to(CUST)              # … and menu re-shown
+    assert "Veg Pulao" in wa.last_to(CUST)  # … and menu re-shown
 
     session = db.get_session(CUST)
     assert session["state"] == "menu_browsing"  # state unchanged
-    assert session["data"]["cart"] == []        # basket untouched
+    assert session["data"]["cart"] == []  # basket untouched
 
 
 def test_invalid_menu_input_variants(db, wa, send, customer_at_menu):

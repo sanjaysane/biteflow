@@ -23,13 +23,21 @@ def test_handler_keys_exist_in_all_locales():
     require every referenced key in every locale table."""
     i18n = I18n(str(ROOT / "locales"))
     src = ROOT / "src"
-    pattern = re.compile(r'''(?:\.t\(\s*\w+\s*,\s*|reply\(\s*|send_to\(\s*\w+\s*,\s*)"([a-z_]+)"''')
+    pattern = re.compile(
+        r'''(?:\.t\(\s*\w+\s*,\s*|reply\(\s*|send_to\(\s*\w+\s*,\s*)"([a-z_]+)"'''
+    )
     referenced: set[str] = set()
     for path in list(src.rglob("*.py")):
         referenced |= set(pattern.findall(path.read_text()))
     # f-string status keys: t(lang, f"status_{status}")
-    for status in ("received", "accepted", "cooking", "out_for_delivery",
-                   "completed", "cancelled"):
+    for status in (
+        "received",
+        "accepted",
+        "cooking",
+        "out_for_delivery",
+        "completed",
+        "cancelled",
+    ):
         referenced.add(f"status_{status}")
     for lang in ("en", "es", "hi"):
         missing = referenced - i18n.keys(lang)

@@ -1,0 +1,37 @@
+# One-command boot of the whole system: Postgres + the webhook app.
+#   docker compose up --build
+# The app applies sql/schema.sql + sql/migrations/* on startup (idempotent),
+# so no manual `psql` step is needed. No WhatsApp credentials are set here,
+# so the app runs with the fake WhatsApp client (logs instead of sending) —
+# perfect for local development and load tests. Mount your own .env for a
+# live Meta connection (see .env.example).
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: biteflow
+      POSTGRES_PASSWORD: biteflow
+      POSTGRES_DB: biteflow
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U biteflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    image: ${BITEFLOW_IMAGE:-biteflow:local}
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://biteflow:biteflow@db:5432/biteflow
+      WEBHOOK_VERIFY_TOKEN: local-dev-verify-token
+      DEFAULT_LANGUAGE: en
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:

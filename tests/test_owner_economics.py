@@ -8,10 +8,9 @@ lives in test_owner_paneer.py.
 
 from datetime import timedelta
 
-from tests.conftest import COOK, CUST
-
 from src.db import utcnow
 from src.owner import economics as E
+from tests.conftest import COOK, CUST
 
 
 def _kitchen(db, cook=COOK):
@@ -34,9 +33,8 @@ def _kitchen(db, cook=COOK):
 
 # ── recipe food-cost math ────────────────────────────────────────────
 def test_recipe_food_cost_calculation(db):
-    ing = _kitchen(db)
-    recipe = next(r for r in db.get_recipes(COOK)
-                  if r["dish_name"] == "Paneer Pulao")
+    _kitchen(db)
+    recipe = next(r for r in db.get_recipes(COOK) if r["dish_name"] == "Paneer Pulao")
     items = db.get_recipe_items(recipe["id"])
     assert E.dish_food_cost(items) == 2.30
     assert E.margin(5.00, 2.30) == round((5.00 - 2.30) / 5.00, 4)
@@ -69,16 +67,18 @@ def test_no_alert_when_threshold_zero(db, wa, i18n):
 
 
 # ── stock consumption on accept + pre-broadcast warning ──────────────
-def _order(db, cook=COOK, cust=CUST, days_ago=0, status="completed",
-           items=None, total=10.00):
+def _order(
+    db, cook=COOK, cust=CUST, days_ago=0, status="completed", items=None, total=10.00
+):
     order = db.create_order(
-        customer_phone=cust, cook_phone=cook,
-        ordered_items=items or [{"item": "Paneer Pulao", "quantity": 2,
-                                 "price": 5.00}],
-        total_sum=total, payment_type="COD")
+        customer_phone=cust,
+        cook_phone=cook,
+        ordered_items=items or [{"item": "Paneer Pulao", "quantity": 2, "price": 5.00}],
+        total_sum=total,
+        payment_type="COD",
+    )
     if days_ago:
-        db.orders[order["id"]]["creation_time"] = (
-            utcnow() - timedelta(days=days_ago))
+        db.orders[order["id"]]["creation_time"] = utcnow() - timedelta(days=days_ago)
     if status != "received":
         db.update_order(order["id"], order_status=status)
     return db.get_order(order["id"])
@@ -90,15 +90,20 @@ def test_consume_stock_on_accept(db, wa, i18n, send, cook_with_menu):
     send(COOK, "3")
     assert db.get_session(COOK)["state"] == "owner_home"
     # A dish with no recipe consumes nothing (honest skip, no crash).
-    order = _order(db, status="received",
-                   items=[{"item": "Veg Pulao", "quantity": 1, "price": 8.50}])
+    order = _order(
+        db,
+        status="received",
+        items=[{"item": "Veg Pulao", "quantity": 1, "price": 8.50}],
+    )
     before = db.get_ingredient(ing["paneer"]["id"])["stock_qty"]
     E.consume_stock_for_order(db, order)
     assert db.get_ingredient(ing["paneer"]["id"])["stock_qty"] == before
     # Paneer Pulao consumes 0.25 kg paneer + 0.10 kg peas per dish.
-    order2 = _order(db, status="received",
-                    items=[{"item": "Paneer Pulao", "quantity": 2,
-                            "price": 5.00}])
+    order2 = _order(
+        db,
+        status="received",
+        items=[{"item": "Paneer Pulao", "quantity": 2, "price": 5.00}],
+    )
     E.consume_stock_for_order(db, order2)
     assert db.get_ingredient(ing["paneer"]["id"])["stock_qty"] == before - 0.5
     assert db.get_ingredient(ing["peas"]["id"])["stock_qty"] == 5.0 - 0.2
@@ -120,19 +125,23 @@ def test_weekly_purchase_plan(db):
     ing = _kitchen(db)
     # 14 Paneer Pulao sold over the last 7 days → 2/day → 14×0.25 = 3.5 kg.
     for _ in range(7):
-        _order(db, items=[{"item": "Paneer Pulao", "quantity": 2,
-                           "price": 5.00}], total=10.00)
+        _order(
+            db,
+            items=[{"item": "Paneer Pulao", "quantity": 2, "price": 5.00}],
+            total=10.00,
+        )
     plan = {p["ingredient"]: p for p in E.weekly_purchase_plan(db, COOK)}
-    assert plan["Paneer"]["suggest_buy"] == 0.0       # 10 kg in stock
+    assert plan["Paneer"]["suggest_buy"] == 0.0  # 10 kg in stock
     db.update_ingredient(ing["paneer"]["id"], stock_qty=1.0)
     plan = {p["ingredient"]: p for p in E.weekly_purchase_plan(db, COOK)}
-    assert plan["Paneer"]["suggest_buy"] == 2.5       # 3.5 − 1.0
+    assert plan["Paneer"]["suggest_buy"] == 2.5  # 3.5 − 1.0
 
 
 def test_daily_pnl(db):
     _kitchen(db)
-    _order(db, items=[{"item": "Paneer Pulao", "quantity": 2, "price": 5.00}],
-           total=10.00)
+    _order(
+        db, items=[{"item": "Paneer Pulao", "quantity": 2, "price": 5.00}], total=10.00
+    )
     db.add_business_cost(COOK, "opex", "Gas refill", 4.00)
     db.add_business_cost(COOK, "capex", "New kadhai", 30.00)
     pnl = E.daily_pnl(db, COOK)

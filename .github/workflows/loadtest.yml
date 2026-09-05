@@ -1,0 +1,71 @@
+name: biteflow-loadtest
+
+# Manual load test: boots the docker-compose stack, fires realistic Meta
+# webhook payloads at it with Locust, and publishes a throughput summary.
+# Run from the Actions tab → "Run workflow".
+on:
+  workflow_dispatch:
+    inputs:
+      users:
+        description: "Concurrent Locust users"
+        required: false
+        default: "20"
+      spawn_rate:
+        description: "Users spawned per second"
+        required: false
+        default: "5"
+      run_time:
+        description: "Test duration (e.g. 2m, 60s)"
+        required: false
+        default: "2m"
+
+jobs:
+  loadtest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Boot compose stack
+        run: docker compose up -d --build
+      - name: Wait for /health
+        run: |
+          for i in $(seq 1 24); do
+            curl -sf http://localhost:8000/health && break || sleep 5
+          done
+          curl -sf http://localhost:8000/health
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Locust
+        run: pip install -r requirements-dev.txt
+      - name: Run Locust (headless)
+        run: |
+          locust -f locustfile.py --headless \
+            -u "${{ inputs.users }}" -r "${{ inputs.spawn_rate }}" \
+            -t "${{ inputs.run_time }}" \
+            --host http://localhost:8000 \
+            --csv /tmp/locust --html /tmp/locust.html
+      - name: Throughput summary
+        if: always()
+        run: python scripts/locust_summary.py /tmp/locust_stats.csv >> "$GITHUB_STEP_SUMMARY"
+      - name: Fail on swallowed handler errors
+        # The webhook returns {"ok": true} even when a handler raises
+        # (production must never 500 on Meta's retries), so HTTP 200 is
+        # not proof of success. Any handler error fails the run.
+        if: always()
+        run: |
+          if docker compose logs app 2>/dev/null | grep -q "\[biteflow\] handler error"; then
+            echo "::error::handler errors found in app logs"
+            docker compose logs app | grep "\[biteflow\] handler error" | head -20
+            exit 1
+          fi
+          echo "no handler errors in app logs"
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: locust-report
+          path: /tmp/locust.html
+          retention-days: 14
+      - name: Teardown
+        if: always()
+        run: docker compose down -v

@@ -22,46 +22,59 @@ def client(monkeypatch):
 def _meta_payload(phone, body):
     return {
         "object": "whatsapp_business_account",
-        "entry": [{
-            "id": "123",
-            "changes": [{
-                "value": {
-                    "messaging_product": "whatsapp",
-                    "messages": [{
-                        "from": phone,
-                        "id": "wamid.1",
-                        "type": "text",
-                        "text": {"body": body},
-                    }],
-                },
-                "field": "messages",
-            }],
-        }],
+        "entry": [
+            {
+                "id": "123",
+                "changes": [
+                    {
+                        "value": {
+                            "messaging_product": "whatsapp",
+                            "messages": [
+                                {
+                                    "from": phone,
+                                    "id": "wamid.1",
+                                    "type": "text",
+                                    "text": {"body": body},
+                                }
+                            ],
+                        },
+                        "field": "messages",
+                    }
+                ],
+            }
+        ],
     }
 
 
 def test_webhook_verify_success(client):
-    r = client.get("/webhook", params={
-        "hub.mode": "subscribe",
-        "hub.verify_token": "test-secret",
-        "hub.challenge": "challenge-42",
-    })
+    r = client.get(
+        "/webhook",
+        params={
+            "hub.mode": "subscribe",
+            "hub.verify_token": "test-secret",
+            "hub.challenge": "challenge-42",
+        },
+    )
     assert r.status_code == 200
     assert r.text == "challenge-42"
 
 
 def test_webhook_verify_wrong_token(client):
-    r = client.get("/webhook", params={
-        "hub.mode": "subscribe",
-        "hub.verify_token": "wrong",
-        "hub.challenge": "challenge-42",
-    })
+    r = client.get(
+        "/webhook",
+        params={
+            "hub.mode": "subscribe",
+            "hub.verify_token": "wrong",
+            "hub.challenge": "challenge-42",
+        },
+    )
     assert r.status_code == 403
 
 
 def test_webhook_post_drives_state_machine(client):
     from src.db import FakeDatabase
     from src.whatsapp import FakeWhatsAppClient
+
     main.app.state.db = FakeDatabase()
     main.app.state.wa = FakeWhatsAppClient()
 
@@ -79,23 +92,30 @@ def test_webhook_post_drives_state_machine(client):
 def test_webhook_post_image_payload(client):
     from src.db import FakeDatabase
     from src.whatsapp import FakeWhatsAppClient
+
     main.app.state.db = FakeDatabase()
     main.app.state.wa = FakeWhatsAppClient()
 
     payload = {
-        "entry": [{
-            "changes": [{
-                "value": {
-                    "messages": [{
-                        "from": "15550007777",
-                        "id": "wamid.2",
-                        "type": "image",
-                        "image": {"id": "media-1", "caption": "receipt"},
-                    }],
-                },
-                "field": "messages",
-            }],
-        }],
+        "entry": [
+            {
+                "changes": [
+                    {
+                        "value": {
+                            "messages": [
+                                {
+                                    "from": "15550007777",
+                                    "id": "wamid.2",
+                                    "type": "image",
+                                    "image": {"id": "media-1", "caption": "receipt"},
+                                }
+                            ],
+                        },
+                        "field": "messages",
+                    }
+                ],
+            }
+        ],
     }
     r = client.post("/webhook", json=payload)
     assert r.status_code == 200  # brand-new user + image → welcome flow, no crash
@@ -103,8 +123,15 @@ def test_webhook_post_image_payload(client):
 
 def test_webhook_post_status_only_payload(client):
     # Delivery receipts carry no "messages" key — must not crash.
-    payload = {"entry": [{"changes": [
-        {"value": {"statuses": [{"id": "wamid.1"}]}, "field": "messages"}]}]}
+    payload = {
+        "entry": [
+            {
+                "changes": [
+                    {"value": {"statuses": [{"id": "wamid.1"}]}, "field": "messages"}
+                ]
+            }
+        ]
+    }
     r = client.post("/webhook", json=payload)
     assert r.status_code == 200
     assert r.json() == {"ok": True}

@@ -11,8 +11,8 @@ picked from digits); every price and decision stays single-digit.
 from __future__ import annotations
 
 from .. import models as M
-from ..context import Ctx, parse_choice, parse_price
 from .. import payments as pay
+from ..context import Ctx, parse_choice, parse_price
 from ..payments import money
 
 
@@ -48,10 +48,16 @@ def show_open_orders(ctx: Ctx) -> None:
         return
     order = orders[0]
     lines = [f"{i['item']} × {i['quantity']}" for i in order["ordered_items"]]
-    ctx.send_to(ctx.phone, "cook_new_order", ctx.lang,
-                order_id=order["id"], customer=order["customer_phone"],
-                items="\n".join(lines) if lines else "—",
-                total=money(order["total_sum"]), payment=order["payment_type"])
+    ctx.send_to(
+        ctx.phone,
+        "cook_new_order",
+        ctx.lang,
+        order_id=order["id"],
+        customer=order["customer_phone"],
+        items="\n".join(lines) if lines else "—",
+        total=money(order["total_sum"]),
+        payment=order["payment_type"],
+    )
     ctx.set_state(M.K_INBOUND, order_id=order["id"], pending_kind="new_order")
 
 
@@ -109,8 +115,7 @@ def handle_inbound(ctx: Ctx) -> None:
         return
     choice = parse_choice(ctx.text, 1, 2)
     if choice is None:
-        ctx.reply("cook_payment_invalid" if kind == "payment"
-                  else "cook_order_invalid")
+        ctx.reply("cook_payment_invalid" if kind == "payment" else "cook_order_invalid")
         return
     customer = order["customer_phone"]
     cust_user = ctx.db.get_user(customer) or {}
@@ -141,8 +146,7 @@ def handle_inbound(ctx: Ctx) -> None:
 
         E.consume_stock_for_order(ctx.db, order)
         E.check_low_stock(ctx.db, ctx.wa, ctx.i18n, ctx.phone)
-        ctx.send_to(customer, "order_accepted_customer", cust_lang,
-                    order_id=order_id)
+        ctx.send_to(customer, "order_accepted_customer", cust_lang, order_id=order_id)
         # Ask this customer once about menu-update opt-in, preserving
         # their tracking session data (order_id etc.).
         from ..owner import states as OW
@@ -151,14 +155,12 @@ def handle_inbound(ctx: Ctx) -> None:
         cust_session = ctx.db.get_session(customer) or {}
         cust_data = dict(cust_session.get("data", {}))
         cust_data["cook_phone"] = ctx.phone
-        ctx.set_state_for(customer, M.ROLE_CUSTOMER, OW.C_OPTIN, cust_lang,
-                          **cust_data)
+        ctx.set_state_for(customer, M.ROLE_CUSTOMER, OW.C_OPTIN, cust_lang, **cust_data)
         ctx.reply("cook_status_prompt", order_id=order_id)
         ctx.set_state(M.K_STATUS, order_id=order_id)
     else:
         ctx.db.update_order(order_id, order_status="cancelled")
-        ctx.send_to(customer, "order_rejected_customer", cust_lang,
-                    order_id=order_id)
+        ctx.send_to(customer, "order_rejected_customer", cust_lang, order_id=order_id)
         show_home(ctx)
 
 
@@ -184,9 +186,14 @@ def handle_status(ctx: Ctx) -> None:
     customer = order["customer_phone"]
     cust_user = ctx.db.get_user(customer) or {}
     cust_lang = cust_user.get("preferred_language", "en")
-    ctx.send_to(customer, "tracking_status", cust_lang, order_id=order_id,
-                status=ctx.i18n.t(cust_lang, f"status_{status}"),
-                total=money(order["total_sum"]))
+    ctx.send_to(
+        customer,
+        "tracking_status",
+        cust_lang,
+        order_id=order_id,
+        status=ctx.i18n.t(cust_lang, f"status_{status}"),
+        total=money(order["total_sum"]),
+    )
     if status == "completed":
         show_home(ctx)
     else:

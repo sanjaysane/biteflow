@@ -11,7 +11,7 @@ checked, polite re-prompt otherwise. No free-form typing in the core loop.
 from __future__ import annotations
 
 from .. import models as M
-from ..context import Ctx, cart_lines, parse_choice
+from ..context import Ctx, parse_choice
 from ..payments import cart_total, create_order_from_cart, money, submit_p2p_proof
 
 
@@ -38,6 +38,7 @@ def handle_ask_role(ctx: Ctx) -> None:
         _show_cooks(ctx)
     else:
         from . import cook as cook_handlers
+
         ctx.reply("cook_registered")
         cook_handlers.show_home(ctx)
 
@@ -48,11 +49,16 @@ def _show_cooks(ctx: Ctx) -> None:
         ctx.reply("cook_list_empty")
         ctx.set_state(M.C_MENU_BROWSING)
         return
-    options = "\n".join(f"{i}. 👩‍🍳 {c['phone_number']}"
-                        for i, c in enumerate(cooks, 1))
+    options = "\n".join(
+        f"{i}. 👩‍🍳 {c['phone_number']}" for i, c in enumerate(cooks, 1)
+    )
     ctx.reply("choose_cook", options=options)
-    ctx.set_state(M.C_MENU_BROWSING, cooks=[c["phone_number"] for c in cooks],
-                  cook_phone=None, cart=[])
+    ctx.set_state(
+        M.C_MENU_BROWSING,
+        cooks=[c["phone_number"] for c in cooks],
+        cook_phone=None,
+        cart=[],
+    )
 
 
 # ── menu browsing ──────────────────────────────────────────────────
@@ -67,20 +73,29 @@ def _show_menu(ctx: Ctx, cook_phone: str) -> None:
         if item.get("description"):
             lines.append(f"   {item['description']}")
     ctx.reply("menu_prompt", items="\n".join(lines))
-    ctx.set_state(M.C_MENU_BROWSING,
-                  cooks=ctx.session["data"].get("cooks", []),
-                  cook_phone=cook_phone,
-                  items=[{"id": it["id"], "item_name": it["item_name"],
-                          "price": float(it["base_price"])} for it in items],
-                  cart=ctx.session["data"].get("cart", []))
+    ctx.set_state(
+        M.C_MENU_BROWSING,
+        cooks=ctx.session["data"].get("cooks", []),
+        cook_phone=cook_phone,
+        items=[
+            {
+                "id": it["id"],
+                "item_name": it["item_name"],
+                "price": float(it["base_price"]),
+            }
+            for it in items
+        ],
+        cart=ctx.session["data"].get("cart", []),
+    )
 
 
 def handle_menu_browsing(ctx: Ctx) -> None:
     data = ctx.session["data"]
     # Step 1: choose a cook (no cook picked yet)
     if not data.get("cook_phone"):
-        cooks = data.get("cooks") or [c["phone_number"]
-                                      for c in ctx.db.get_cooks_with_menus()]
+        cooks = data.get("cooks") or [
+            c["phone_number"] for c in ctx.db.get_cooks_with_menus()
+        ]
         choice = parse_choice(ctx.text, 1, len(cooks)) if cooks else None
         if choice is None:
             ctx.reply("cook_choice_invalid")
@@ -105,8 +120,11 @@ def handle_menu_browsing(ctx: Ctx) -> None:
         return
     item = items[choice - 1]
     ctx.reply("ask_quantity", item=item["item_name"])
-    ctx.set_state(M.C_QUANTITY, pending_item=item,
-                  **{k: v for k, v in data.items() if k != "pending_item"})
+    ctx.set_state(
+        M.C_QUANTITY,
+        pending_item=item,
+        **{k: v for k, v in data.items() if k != "pending_item"},
+    )
 
 
 # ── quantity ───────────────────────────────────────────────────────
@@ -118,13 +136,16 @@ def handle_quantity(ctx: Ctx) -> None:
     data = ctx.session["data"]
     item = data["pending_item"]
     cart = data.get("cart", [])
-    cart.append({"item_name": item["item_name"], "price": item["price"],
-                 "qty": qty})
+    cart.append({"item_name": item["item_name"], "price": item["price"], "qty": qty})
     ctx.reply("menu_added", item=item["item_name"], qty=qty)
     ctx.reply("checkout_hint")
-    ctx.set_state(M.C_MENU_BROWSING,
-                  cooks=data.get("cooks", []), cook_phone=data["cook_phone"],
-                  items=data.get("items", []), cart=cart)
+    ctx.set_state(
+        M.C_MENU_BROWSING,
+        cooks=data.get("cooks", []),
+        cook_phone=data["cook_phone"],
+        items=data.get("items", []),
+        cart=cart,
+    )
 
 
 # ── order review ───────────────────────────────────────────────────
@@ -139,20 +160,36 @@ def show_review(ctx: Ctx) -> None:
     cart = ctx.session["data"].get("cart", [])
     lines = [ctx.i18n.t(ctx.lang, "review_title")]
     for n, c in enumerate(cart, 1):
-        lines.append(ctx.i18n.t(ctx.lang, "review_line", n=n,
-                                item=c["item_name"], qty=c["qty"],
-                                price=money(float(c["price"]) * int(c["qty"]))))
+        lines.append(
+            ctx.i18n.t(
+                ctx.lang,
+                "review_line",
+                n=n,
+                item=c["item_name"],
+                qty=c["qty"],
+                price=money(float(c["price"]) * int(c["qty"])),
+            )
+        )
     total = cart_total(cart)
     discounts, disc_total = _discounts_total(ctx)
-    lines.append(ctx.i18n.t(ctx.lang, "review_total",
-                            total=money(total)))
+    lines.append(ctx.i18n.t(ctx.lang, "review_total", total=money(total)))
     if discounts:
         for d in discounts:
-            lines.append(ctx.i18n.t(ctx.lang, "c_review_discount",
-                                    desc=d.get("desc", ""),
-                                    discount=money(d.get("discount", 0))))
-        lines.append(ctx.i18n.t(ctx.lang, "c_review_total_after",
-                                total=money(round(total - disc_total, 2))))
+            lines.append(
+                ctx.i18n.t(
+                    ctx.lang,
+                    "c_review_discount",
+                    desc=d.get("desc", ""),
+                    discount=money(d.get("discount", 0)),
+                )
+            )
+        lines.append(
+            ctx.i18n.t(
+                ctx.lang,
+                "c_review_total_after",
+                total=money(round(total - disc_total, 2)),
+            )
+        )
     lines.append(ctx.i18n.t(ctx.lang, "review_prompt"))
     ctx.wa.send_text(ctx.phone, "\n".join(lines))
     ctx.set_state(M.C_REVIEW)
@@ -173,8 +210,7 @@ def handle_review(ctx: Ctx) -> None:
         return
     if choice == 2:
         ctx.reply("order_cancelled")
-        ctx.set_state(M.C_MENU_BROWSING, cooks=[], cook_phone=None,
-                      items=[], cart=[])
+        ctx.set_state(M.C_MENU_BROWSING, cooks=[], cook_phone=None, items=[], cart=[])
         _show_cooks(ctx)
         return
     ctx.reply("payment_title")
@@ -192,12 +228,10 @@ def handle_payment(ctx: Ctx) -> None:
     cook_phone = data.get("cook_phone")
     if not cart or not cook_phone:
         ctx.reply("generic_invalid")
-        ctx.set_state(M.C_MENU_BROWSING, cooks=[], cook_phone=None,
-                      items=[], cart=[])
+        ctx.set_state(M.C_MENU_BROWSING, cooks=[], cook_phone=None, items=[], cart=[])
         return
     payment_type = "COD" if choice == 1 else "P2P_TRANSFER"
-    order = create_order_from_cart(ctx.db, ctx.phone, cook_phone, cart,
-                                   payment_type)
+    order = create_order_from_cart(ctx.db, ctx.phone, cook_phone, cart, payment_type)
     order_id = order["id"]
     # Business-owner addendum: stack the discounts. A typed referral code
     # (from 5️⃣ at review) is already in session data; the freemium
@@ -214,44 +248,51 @@ def handle_payment(ctx: Ctx) -> None:
         nonlocal remaining
         amt = round(min(float(amount), remaining), 2)
         if amt > 0:
-            discounts.append({"kind": kind, "discount": amt,
-                              "desc": desc, **extra})
+            discounts.append({"kind": kind, "discount": amt, "desc": desc, **extra})
             remaining = round(remaining - amt, 2)
 
     for d in data.get("discounts", []):
         if d.get("kind") == "referral":
-            _take("referral", d["discount"], d["desc"],
-                  referral_id=d.get("referral_id"))
+            _take(
+                "referral", d["discount"], d["desc"], referral_id=d.get("referral_id")
+            )
     auto = MK.first_order_offer(ctx.db, cook_phone, ctx.phone, total, cart)
     if auto["discount"] > 0:
         _take("offer", auto["discount"], auto["desc"])
-    credit = MK.consume_referrer_credit(ctx.db, cook_phone, ctx.phone,
-                                        remaining)
+    credit = MK.consume_referrer_credit(ctx.db, cook_phone, ctx.phone, remaining)
     if credit["discount"] > 0:
-        discounts.append({"kind": "credit", "discount": credit["discount"],
-                          "desc": credit["desc"]})
+        discounts.append(
+            {"kind": "credit", "discount": credit["discount"], "desc": credit["desc"]}
+        )
         remaining = round(remaining - credit["discount"], 2)
     disc_total = round(total - remaining, 2)
     disc_desc = "; ".join(d["desc"] for d in discounts)
     if disc_total > 0:
-        ctx.db.update_order(order_id, discount_total=disc_total,
-                            discount_desc=disc_desc[:500])
+        ctx.db.update_order(
+            order_id, discount_total=disc_total, discount_desc=disc_desc[:500]
+        )
         for d in discounts:
             if d.get("kind") == "referral" and d.get("referral_id"):
-                MK.finalize_referral(ctx.db, cook_phone,
-                                     int(d["referral_id"]), ctx.phone,
-                                     order_id)
+                MK.finalize_referral(
+                    ctx.db, cook_phone, int(d["referral_id"]), ctx.phone, order_id
+                )
     net = round(total - disc_total, 2)
     if payment_type == "COD":
         ctx.reply("cod_confirmed", total=money(net))
     else:
-        ctx.reply("p2p_instructions", total=money(net),
-                  cook=cook_phone)
-        ctx.set_state(M.C_PROOF, order_id=order_id,
-                      cooks=[], cook_phone=None, items=[], cart=[])
+        ctx.reply("p2p_instructions", total=money(net), cook=cook_phone)
+        ctx.set_state(
+            M.C_PROOF, order_id=order_id, cooks=[], cook_phone=None, items=[], cart=[]
+        )
     if payment_type == "COD":
-        ctx.set_state(M.C_TRACKING, order_id=order_id,
-                      cooks=[], cook_phone=None, items=[], cart=[])
+        ctx.set_state(
+            M.C_TRACKING,
+            order_id=order_id,
+            cooks=[],
+            cook_phone=None,
+            items=[],
+            cart=[],
+        )
     order = ctx.db.get_order(order_id) or order  # pick up discount_total
     _notify_cook_new_order(ctx, order)
 
@@ -262,14 +303,27 @@ def _notify_cook_new_order(ctx: Ctx, order: dict) -> None:
     cook_user = ctx.db.get_user(cook_phone) or {}
     cook_lang = cook_user.get("preferred_language", "en")
     lines = [f"{i['item']} × {i['quantity']}" for i in order["ordered_items"]]
-    net = round(float(order.get("total_sum", 0.0))
-                - float(order.get("discount_total", 0.0)), 2)
-    ctx.send_to(cook_phone, "cook_new_order", cook_lang,
-                order_id=order["id"], customer=order["customer_phone"],
-                items="\n".join(lines) if lines else "—",
-                total=money(net), payment=order["payment_type"])
-    ctx.set_state_for(cook_phone, M.ROLE_COOK, M.K_INBOUND, cook_lang,
-                      order_id=order["id"], pending_kind="new_order")
+    net = round(
+        float(order.get("total_sum", 0.0)) - float(order.get("discount_total", 0.0)), 2
+    )
+    ctx.send_to(
+        cook_phone,
+        "cook_new_order",
+        cook_lang,
+        order_id=order["id"],
+        customer=order["customer_phone"],
+        items="\n".join(lines) if lines else "—",
+        total=money(net),
+        payment=order["payment_type"],
+    )
+    ctx.set_state_for(
+        cook_phone,
+        M.ROLE_COOK,
+        M.K_INBOUND,
+        cook_lang,
+        order_id=order["id"],
+        pending_kind="new_order",
+    )
 
 
 def handle_proof(ctx: Ctx) -> None:
@@ -277,34 +331,48 @@ def handle_proof(ctx: Ctx) -> None:
     order_id = ctx.session["data"].get("order_id")
     if not order_id:
         ctx.reply("generic_invalid")
-        ctx.set_state(M.C_MENU_BROWSING, cooks=[], cook_phone=None,
-                      items=[], cart=[])
+        ctx.set_state(M.C_MENU_BROWSING, cooks=[], cook_phone=None, items=[], cart=[])
         return
     if ctx.msg_type == "image" and ctx.media_id:
         proof_ref = f"photo:{ctx.media_id}"
     elif ctx.text and ctx.text.strip():
         proof_ref = f"ref:{ctx.text.strip()}"
     else:
-        ctx.reply("p2p_instructions",
-                  total=money(ctx.db.get_order(order_id)["total_sum"]),
-                  cook=ctx.db.get_order(order_id)["cook_phone"])
+        ctx.reply(
+            "p2p_instructions",
+            total=money(ctx.db.get_order(order_id)["total_sum"]),
+            cook=ctx.db.get_order(order_id)["cook_phone"],
+        )
         return
     order = submit_p2p_proof(ctx.db, order_id, proof_ref)
     assert order is not None
     ctx.reply("payment_proof_received")
-    ctx.set_state(M.C_TRACKING, order_id=order_id,
-                  cooks=[], cook_phone=None, items=[], cart=[])
+    ctx.set_state(
+        M.C_TRACKING, order_id=order_id, cooks=[], cook_phone=None, items=[], cart=[]
+    )
     # → cook's inbound queue: single-digit approve / deny
     from .. import payments as pay
+
     cook_phone = order["cook_phone"]
     cook_user = ctx.db.get_user(cook_phone) or {}
     cook_lang = cook_user.get("preferred_language", "en")
-    ctx.send_to(cook_phone, "cook_payment_proof", cook_lang,
-                order_id=order_id, customer=order["customer_phone"],
-                total=money(order["total_sum"]),
-                proof=pay.describe_proof(proof_ref))
-    ctx.set_state_for(cook_phone, M.ROLE_COOK, M.K_INBOUND, cook_lang,
-                      order_id=order_id, pending_kind="payment")
+    ctx.send_to(
+        cook_phone,
+        "cook_payment_proof",
+        cook_lang,
+        order_id=order_id,
+        customer=order["customer_phone"],
+        total=money(order["total_sum"]),
+        proof=pay.describe_proof(proof_ref),
+    )
+    ctx.set_state_for(
+        cook_phone,
+        M.ROLE_COOK,
+        M.K_INBOUND,
+        cook_lang,
+        order_id=order_id,
+        pending_kind="payment",
+    )
 
 
 # ── tracking ───────────────────────────────────────────────────────
@@ -321,6 +389,9 @@ def handle_tracking(ctx: Ctx) -> None:
     if order is None:
         ctx.reply("tracking_none")
         return
-    ctx.reply("tracking_status", order_id=order["id"],
-              status=_status_label(ctx, order["order_status"]),
-              total=money(order["total_sum"]))
+    ctx.reply(
+        "tracking_status",
+        order_id=order["id"],
+        status=_status_label(ctx, order["order_status"]),
+        total=money(order["total_sum"]),
+    )

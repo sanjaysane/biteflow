@@ -28,12 +28,16 @@ def cart_total(cart: list[dict]) -> float:
     return round(sum(float(i["price"]) * int(i["qty"]) for i in cart), 2)
 
 
-def create_order_from_cart(db: Database, customer_phone: str, cook_phone: str,
-                           cart: list[dict], payment_type: str) -> dict:
+def create_order_from_cart(
+    db: Database,
+    customer_phone: str,
+    cook_phone: str,
+    cart: list[dict],
+    payment_type: str,
+) -> dict:
     """Snapshot the cart into an order row (JSONB) and return it."""
     items = [
-        {"item": c["item_name"], "quantity": int(c["qty"]),
-         "price": float(c["price"])}
+        {"item": c["item_name"], "quantity": int(c["qty"]), "price": float(c["price"])}
         for c in cart
     ]
     return db.create_order(
@@ -51,16 +55,16 @@ def submit_p2p_proof(db: Database, order_id: int, proof_ref: str) -> dict | None
     proof_ref is either 'photo:<media-id>' for a screenshot upload or
     'ref:<text>' for a typed reference name/ID.
     """
-    return db.update_order(order_id, payment_status="pending_approval",
-                           payment_proof_ref=proof_ref[:300])
+    return db.update_order(
+        order_id, payment_status="pending_approval", payment_proof_ref=proof_ref[:300]
+    )
 
 
 def decide_payment(db: Database, order_id: int, approved: bool) -> dict | None:
     """Cook's single-digit verdict on a P2P proof."""
     if approved:
         return db.update_order(order_id, payment_status="verified")
-    return db.update_order(order_id, payment_status="unpaid",
-                           payment_proof_ref="")
+    return db.update_order(order_id, payment_status="unpaid", payment_proof_ref="")
 
 
 def describe_proof(proof_ref: str) -> str:

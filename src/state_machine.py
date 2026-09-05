@@ -105,24 +105,36 @@ def _handle_language_select(ctx: Ctx) -> None:
     ret_data.pop("return_state", None)
     ret_data.pop("return_data", None)
     if not ret_state:
-        ctx.set_state(M.C_MENU_BROWSING, cooks=[], cook_phone=None,
-                      items=[], cart=[])
+        ctx.set_state(M.C_MENU_BROWSING, cooks=[], cook_phone=None, items=[], cart=[])
         return
     ctx.set_state(ret_state, **ret_data)
     # Re-dispatch with no input: every state's invalid-input branch politely
     # re-renders its prompt — now in the newly chosen language.
-    process_incoming(ctx.db, ctx.wa, ctx.i18n, ctx.phone, None,
-                     msg_type="text", default_lang=ctx.default_lang)
+    process_incoming(
+        ctx.db,
+        ctx.wa,
+        ctx.i18n,
+        ctx.phone,
+        None,
+        msg_type="text",
+        default_lang=ctx.default_lang,
+    )
 
 
 def fresh_session(phone: str, default_lang: str) -> dict:
     return {"role": None, "state": M.C_NEW, "lang": default_lang, "data": {}}
 
 
-def process_incoming(db: Database, wa: WhatsAppClient, i18n: I18n,
-                     phone: str, text: str | None, msg_type: str = "text",
-                     media_id: str | None = None,
-                     default_lang: str = "en") -> None:
+def process_incoming(
+    db: Database,
+    wa: WhatsAppClient,
+    i18n: I18n,
+    phone: str,
+    text: str | None,
+    msg_type: str = "text",
+    media_id: str | None = None,
+    default_lang: str = "en",
+) -> None:
     """Single entry point for every inbound WhatsApp message."""
     user = db.get_user(phone)
     session = db.get_session(phone)
@@ -131,9 +143,19 @@ def process_incoming(db: Database, wa: WhatsAppClient, i18n: I18n,
         # Brand-new chats start unregistered; language comes from default.
     lang = resolve_language(user, session, default_lang)
 
-    ctx = Ctx(db=db, wa=wa, i18n=i18n, phone=phone, user=user,
-              session=session, text=text, msg_type=msg_type,
-              media_id=media_id, lang=lang, default_lang=default_lang)
+    ctx = Ctx(
+        db=db,
+        wa=wa,
+        i18n=i18n,
+        phone=phone,
+        user=user,
+        session=session,
+        text=text,
+        msg_type=msg_type,
+        media_id=media_id,
+        lang=lang,
+        default_lang=default_lang,
+    )
 
     # Language switch works from any state (but not while selecting one).
     if session["state"] != M.C_LANGUAGE and _is_language_command(text):
@@ -158,8 +180,9 @@ def process_incoming(db: Database, wa: WhatsAppClient, i18n: I18n,
             ctx.set_state(M.K_HOME)
             cook.show_home(ctx)
         else:
-            ctx.set_state(M.C_MENU_BROWSING, cooks=[], cook_phone=None,
-                          items=[], cart=[])
+            ctx.set_state(
+                M.C_MENU_BROWSING, cooks=[], cook_phone=None, items=[], cart=[]
+            )
             customer.handle_menu_browsing(ctx)
         return
     handler(ctx)

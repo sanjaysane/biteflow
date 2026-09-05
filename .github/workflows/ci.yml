@@ -6,16 +6,75 @@ on:
   pull_request:
 
 jobs:
-  test:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Install dev dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Ruff lint
+        run: ruff check src tests scripts locustfile.py
+      - name: Ruff format check
+        run: ruff format --check src tests scripts locustfile.py
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: biteflow
+          POSTGRES_PASSWORD: biteflow
+          POSTGRES_DB: biteflow_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U biteflow"
+          --health-interval=5s --health-timeout=5s --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.txt -r requirements-dev.txt
+      - name: Apply migrations to REAL PostgreSQL
+        env:
+          BITEFLOW_TEST_DATABASE_URL: postgresql://biteflow:biteflow@localhost:5432/biteflow_test
+        run: python scripts/apply_migrations.py
       - name: Locale key parity
-        run: python -c "import json,sys; ks=[set(json.load(open(f'locales/{l}.json',encoding='utf-8'))) for l in ('en','es','hi')]; assert ks[0]==ks[1]==ks[2], 'locale keys diverged'; print('locales OK:', len(ks[0]), 'keys')"
-      - name: Run tests
-        run: python -m pytest tests/ -q
+        run: python scripts/check_locales.py
+      - name: Run tests with coverage (fake DB + real Postgres smoke)
+        env:
+          BITEFLOW_TEST_DATABASE_URL: postgresql://biteflow:biteflow@localhost:5432/biteflow_test
+        run: python -m pytest tests/ -q --cov=src --cov-report=term-missing --cov-fail-under=60
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          tags: biteflow:ci
+      - name: Boot compose stack and hit /health
+        run: |
+          BITEFLOW_IMAGE=biteflow:ci docker compose up -d
+          for i in $(seq 1 24); do
+            curl -sf http://localhost:8000/health && break || sleep 5
+          done
+          curl -sf http://localhost:8000/health
+      - name: Teardown
+        if: always()
+        run: docker compose down -v

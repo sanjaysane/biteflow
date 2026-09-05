@@ -18,12 +18,17 @@ class WhatsAppClient(abc.ABC):
 
 
 class MetaWhatsAppClient(WhatsAppClient):
-    def __init__(self, token: str, phone_number_id: str,
-                 api_base: str = "https://graph.facebook.com/v21.0",
-                 http_client=None) -> None:
+    def __init__(
+        self,
+        token: str,
+        phone_number_id: str,
+        api_base: str = "https://graph.facebook.com/v21.0",
+        http_client=None,
+    ) -> None:
         if not token or not phone_number_id:
             raise RuntimeError(
-                "WHATSAPP_TOKEN and WHATSAPP_PHONE_NUMBER_ID must be set")
+                "WHATSAPP_TOKEN and WHATSAPP_PHONE_NUMBER_ID must be set"
+            )
         self._token = token
         self._url = f"{api_base}/{phone_number_id}/messages"
         self._http = http_client  # injectable for tests
@@ -32,6 +37,7 @@ class MetaWhatsAppClient(WhatsAppClient):
         if self._http is not None:
             return self._http
         import httpx
+
         return httpx.Client(timeout=15.0)
 
     def send_text(self, to: str, body: str) -> None:
@@ -42,8 +48,10 @@ class MetaWhatsAppClient(WhatsAppClient):
             "type": "text",
             "text": {"preview_url": False, "body": body},
         }
-        headers = {"Authorization": f"Bearer {self._token}",
-                   "Content-Type": "application/json"}
+        headers = {
+            "Authorization": f"Bearer {self._token}",
+            "Content-Type": "application/json",
+        }
         client = self._client()
         close = False
         if not hasattr(client, "post"):
@@ -55,7 +63,8 @@ class MetaWhatsAppClient(WhatsAppClient):
             resp = client.post(self._url, json=payload, headers=headers)
             if resp.status_code >= 400:
                 raise RuntimeError(
-                    f"WhatsApp API error {resp.status_code}: {resp.text[:300]}")
+                    f"WhatsApp API error {resp.status_code}: {resp.text[:300]}"
+                )
         finally:
             if close and hasattr(client, "close"):
                 client.close()
