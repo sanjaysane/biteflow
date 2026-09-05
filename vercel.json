@@ -1,0 +1,29 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "builds": [
+    {
+      "config": {
+        "maxLambdaSize": "15mb"
+      },
+      "src": "src/main.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "env": {
+    "DEFAULT_LANGUAGE": "en"
+  },
+  "routes": [
+    {
+      "dest": "src/main.py",
+      "src": "/webhook"
+    },
+    {
+      "dest": "src/main.py",
+      "src": "/health"
+    },
+    {
+      "dest": "src/main.py",
+      "src": "/(.*)"
+    }
+  ]
+}
