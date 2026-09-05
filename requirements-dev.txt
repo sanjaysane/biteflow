@@ -1,4 +1,4 @@
-pytest>=8.0
+pytest>=9.1.1
 # Development / CI-only dependencies. The Docker image and runtime
 # install requirements.txt only; these are for lint, tests, and load.
 -r requirements.txt
