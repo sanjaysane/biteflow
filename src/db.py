@@ -30,6 +30,17 @@ class Database(abc.ABC):
     def upsert_user(self, phone: str, role: str, language: str) -> dict: ...
     @abc.abstractmethod
     def set_user_language(self, phone: str, language: str) -> None: ...
+    @abc.abstractmethod
+    def set_display_name(self, phone: str, display_name: str) -> None:
+        """Store a human nickname for a phone number (WhatsApp profile
+        name or a name the user typed). Customer-facing surfaces show
+        this instead of the raw phone number."""
+        ...
+
+    def display_name(self, phone: str) -> str:
+        """Nickname for customer-facing text; raw phone as fallback."""
+        user = self.get_user(phone) or {}
+        return user.get("display_name") or phone
 
     # ── sessions (serverless state hydration) ──────────────────
     @abc.abstractmethod
@@ -46,6 +57,8 @@ class Database(abc.ABC):
         description: str,
         base_price: float,
         language_iso: str,
+        photo_ref: str | None = None,
+        ingredients: str = "",
     ) -> dict: ...
     @abc.abstractmethod
     def get_active_menus(self, cook_phone: str) -> list[dict]: ...
@@ -235,6 +248,7 @@ class FakeDatabase(Database):
                 "phone_number": phone,
                 "system_role": role,
                 "preferred_language": language,
+                "display_name": None,
                 "registration_timestamp": utcnow(),
             }
             self.users[phone] = user
@@ -245,6 +259,10 @@ class FakeDatabase(Database):
     def set_user_language(self, phone: str, language: str) -> None:
         if phone in self.users:
             self.users[phone]["preferred_language"] = language
+
+    def set_display_name(self, phone: str, display_name: str) -> None:
+        if phone in self.users and display_name:
+            self.users[phone]["display_name"] = display_name[:80]
 
     # sessions
     def get_session(self, phone: str) -> dict | None:
@@ -262,6 +280,8 @@ class FakeDatabase(Database):
         description: str,
         base_price: float,
         language_iso: str,
+        photo_ref: str | None = None,
+        ingredients: str = "",
     ) -> dict:
         item = {
             "id": next(self._ids),
@@ -270,6 +290,8 @@ class FakeDatabase(Database):
             "description": description,
             "base_price": float(base_price),
             "language_iso": language_iso,
+            "photo_ref": photo_ref,
+            "ingredients": ingredients or "",
             "active_status": True,
             "created_at": utcnow(),
         }
@@ -297,6 +319,7 @@ class FakeDatabase(Database):
                 {
                     "phone_number": p,
                     "preferred_language": user.get("preferred_language", "en"),
+                    "display_name": user.get("display_name") or p,
                 }
             )
         return out
@@ -802,6 +825,15 @@ class PostgresDatabase(Database):
                 (language, phone),
             )
 
+    def set_display_name(self, phone: str, display_name: str) -> None:
+        if not display_name:
+            return
+        with self._conn() as c, c.cursor() as cur:
+            cur.execute(
+                "UPDATE users SET display_name = %s WHERE phone_number = %s",
+                (display_name[:80], phone),
+            )
+
     # ── sessions ──
     def get_session(self, phone: str) -> dict | None:
         with self._conn() as c, c.cursor() as cur:
@@ -849,13 +881,24 @@ class PostgresDatabase(Database):
         description: str,
         base_price: float,
         language_iso: str,
+        photo_ref: str | None = None,
+        ingredients: str = "",
     ) -> dict:
         with self._conn() as c, c.cursor() as cur:
             cur.execute(
                 """INSERT INTO menus
-                     (cook_phone, item_name, description, base_price, language_iso)
-                   VALUES (%s, %s, %s, %s, %s) RETURNING *""",
-                (cook_phone, item_name, description, base_price, language_iso),
+                     (cook_phone, item_name, description, base_price,
+                      language_iso, photo_ref, ingredients)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING *""",
+                (
+                    cook_phone,
+                    item_name,
+                    description,
+                    base_price,
+                    language_iso,
+                    photo_ref,
+                    ingredients or "",
+                ),
             )
             return self._one(cur)  # type: ignore[return-value]
 
@@ -872,7 +915,8 @@ class PostgresDatabase(Database):
     def get_cooks_with_menus(self) -> list[dict]:
         with self._conn() as c, c.cursor() as cur:
             cur.execute(
-                """SELECT DISTINCT u.phone_number, u.preferred_language
+                """SELECT DISTINCT u.phone_number, u.preferred_language,
+                          COALESCE(u.display_name, u.phone_number) AS display_name
                    FROM users u JOIN menus m ON m.cook_phone = u.phone_number
                    WHERE m.active_status = TRUE
                    ORDER BY u.phone_number""",

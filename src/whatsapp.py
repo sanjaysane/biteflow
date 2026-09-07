@@ -16,6 +16,16 @@ class WhatsAppClient(abc.ABC):
         """Send a plain-text WhatsApp message to an E.164 number."""
         ...
 
+    @abc.abstractmethod
+    def send_image(self, to: str, media_ref: str, caption: str = "") -> None:
+        """Send a photo message.
+
+        media_ref is "photo:<media-id>" for a real WhatsApp upload, or
+        "sample:<label>" for clearly-labeled sample/fixture data used in
+        tests and local development (never presented as a real upload).
+        """
+        ...
+
 
 class MetaWhatsAppClient(WhatsAppClient):
     def __init__(
@@ -41,13 +51,36 @@ class MetaWhatsAppClient(WhatsAppClient):
         return httpx.Client(timeout=15.0)
 
     def send_text(self, to: str, body: str) -> None:
-        payload = {
-            "messaging_product": "whatsapp",
-            "recipient_type": "individual",
-            "to": to,
-            "type": "text",
-            "text": {"preview_url": False, "body": body},
-        }
+        self._post(
+            {
+                "messaging_product": "whatsapp",
+                "recipient_type": "individual",
+                "to": to,
+                "type": "text",
+                "text": {"preview_url": False, "body": body},
+            }
+        )
+
+    def send_image(self, to: str, media_ref: str, caption: str = "") -> None:
+        if media_ref.startswith("photo:"):
+            image = {"id": media_ref[len("photo:"):]}
+        else:
+            # "sample:..." refs have no hosted media to attach: deliver the
+            # caption as text, explicitly labeled as sample data.
+            label = media_ref.removeprefix("sample:")
+            self.send_text(to, f"📸 [sample photo: {label}]\n{caption}")
+            return
+        self._post(
+            {
+                "messaging_product": "whatsapp",
+                "recipient_type": "individual",
+                "to": to,
+                "type": "image",
+                "image": {**image, "caption": caption},
+            }
+        )
+
+    def _post(self, payload: dict) -> None:
         headers = {
             "Authorization": f"Bearer {self._token}",
             "Content-Type": "application/json",
@@ -75,9 +108,13 @@ class FakeWhatsAppClient(WhatsAppClient):
 
     def __init__(self) -> None:
         self.sent: list[tuple[str, str]] = []
+        self.images: list[tuple[str, str, str]] = []  # (to, media_ref, caption)
 
     def send_text(self, to: str, body: str) -> None:
         self.sent.append((to, body))
+
+    def send_image(self, to: str, media_ref: str, caption: str = "") -> None:
+        self.images.append((to, media_ref, caption))
 
     def last_to(self, phone: str) -> str | None:
         for to, body in reversed(self.sent):
@@ -87,3 +124,4 @@ class FakeWhatsAppClient(WhatsAppClient):
 
     def clear(self) -> None:
         self.sent.clear()
+        self.images.clear()

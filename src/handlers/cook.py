@@ -1,11 +1,14 @@
 """Cook conversational loop.
 
-States: cook_home → menu_broadcast (guided name/price/add-more loop)
+States: cook_home → menu_broadcast (guided name/price/photo/ingredients/
+                     description/add-more loop)
                  → order_inbound_queue (1 = accept/approve, 2 = reject/deny)
                  → status_update_broadcast (1/2/3 status push to customer)
 
-Menu setup intentionally allows brief free-form text (dish names can't be
-picked from digits); every price and decision stays single-digit.
+Menu setup intentionally allows brief free-form text (dish names and
+descriptions can't be picked from digits); every price and decision
+stays single-digit. Dish photos ride as WhatsApp image messages; a cook
+may also skip with 0 at each enrichment step.
 """
 
 from __future__ import annotations
@@ -13,7 +16,11 @@ from __future__ import annotations
 from .. import models as M
 from .. import payments as pay
 from ..context import Ctx, parse_choice, parse_price
-from ..payments import money
+from ..payments import currency_symbol
+
+
+def _price_example(ctx: Ctx) -> str:
+    return "140" if currency_symbol(ctx.lang) == "₹" else "8.50"
 
 
 # ── home hub ───────────────────────────────────────────────────────
@@ -53,9 +60,9 @@ def show_open_orders(ctx: Ctx) -> None:
         "cook_new_order",
         ctx.lang,
         order_id=order["id"],
-        customer=order["customer_phone"],
+        customer=ctx.db.display_name(order["customer_phone"]),
         items="\n".join(lines) if lines else "—",
-        total=money(order["total_sum"]),
+        total=ctx.money(order["total_sum"]),
         payment=order["payment_type"],
     )
     ctx.set_state(M.K_INBOUND, order_id=order["id"], pending_kind="new_order")
@@ -71,21 +78,54 @@ def start_broadcast(ctx: Ctx) -> None:
 
 def handle_menu_broadcast(ctx: Ctx) -> None:
     step = ctx.session["data"].get("menu_step", "name")
+    data = ctx.session["data"]
     if step == "name":
         name = (ctx.text or "").strip()
         if not name or len(name) > 120:
             ctx.reply("cook_menu_name")
             return
-        ctx.reply("cook_menu_price", item=name)
+        ctx.reply(
+            "cook_menu_price", item=name, cur=ctx.currency(), ex=_price_example(ctx)
+        )
         ctx.set_state(M.K_MENU, menu_step="price", pending_name=name)
     elif step == "price":
         price = parse_price(ctx.text)
         if price is None:
-            ctx.reply("cook_menu_price_invalid")
+            ctx.reply("cook_menu_price_invalid", ex=_price_example(ctx))
             return
-        name = ctx.session["data"]["pending_name"]
-        ctx.db.add_menu_item(ctx.phone, name, "", price, ctx.lang)
-        ctx.reply("cook_menu_another", item=name, price=money(price))
+        name = data["pending_name"]
+        ctx.reply("cook_menu_photo", item=name)
+        ctx.set_state(M.K_MENU, menu_step="photo", pending_price=price)
+    elif step == "photo":
+        # A real WhatsApp photo arrives as an image message; "0" skips.
+        # Anything else re-prompts — a photo step that silently swallowed
+        # text would lose the cook's next answer.
+        photo_ref: str | None = None
+        if ctx.msg_type == "image" and ctx.media_id:
+            photo_ref = f"photo:{ctx.media_id}"
+        elif (ctx.text or "").strip() != "0":
+            ctx.reply("cook_menu_photo", item=data["pending_name"])
+            return
+        ctx.reply("cook_menu_ingredients", item=data["pending_name"])
+        ctx.set_state(M.K_MENU, menu_step="ingredients", pending_photo=photo_ref)
+    elif step == "ingredients":
+        text = (ctx.text or "").strip()
+        ingredients = "" if text == "0" or not text else text[:300]
+        ctx.reply("cook_menu_desc")
+        ctx.set_state(M.K_MENU, menu_step="description", pending_ingredients=ingredients)
+    elif step == "description":
+        text = (ctx.text or "").strip()
+        description = "" if text == "0" or not text else text[:300]
+        item = ctx.db.add_menu_item(
+            ctx.phone,
+            data["pending_name"],
+            description,
+            data["pending_price"],
+            ctx.lang,
+            photo_ref=data.get("pending_photo"),
+            ingredients=data.get("pending_ingredients", ""),
+        )
+        ctx.reply("cook_menu_another", item=item["item_name"], price=ctx.money(item["base_price"]))
         ctx.set_state(M.K_MENU, menu_step="another")
     elif step == "another":
         choice = parse_choice(ctx.text, 1, 2)
@@ -151,7 +191,9 @@ def handle_inbound(ctx: Ctx) -> None:
         # their tracking session data (order_id etc.).
         from ..owner import states as OW
 
-        ctx.send_to(customer, "c_optin_ask", cust_lang, cook=ctx.phone)
+        ctx.send_to(
+            customer, "c_optin_ask", cust_lang, cook=ctx.db.display_name(ctx.phone)
+        )
         cust_session = ctx.db.get_session(customer) or {}
         cust_data = dict(cust_session.get("data", {}))
         cust_data["cook_phone"] = ctx.phone
@@ -192,7 +234,7 @@ def handle_status(ctx: Ctx) -> None:
         cust_lang,
         order_id=order_id,
         status=ctx.i18n.t(cust_lang, f"status_{status}"),
-        total=money(order["total_sum"]),
+        total=ctx.money(order["total_sum"]),
     )
     if status == "completed":
         show_home(ctx)

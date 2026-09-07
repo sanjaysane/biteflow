@@ -54,9 +54,15 @@ def cook_with_menu(db, wa, i18n, send):
     send(COOK, "1")  # cook home → set menu
     send(COOK, "Veg Pulao")  # dish name
     send(COOK, "8.50")  # price
+    send(COOK, "0")  # skip photo
+    send(COOK, "0")  # skip ingredients
+    send(COOK, "0")  # skip description
     send(COOK, "1")  # add another
     send(COOK, "Dal Tadka")  # dish name
     send(COOK, "7")  # price
+    send(COOK, "0")  # skip photo
+    send(COOK, "0")  # skip ingredients
+    send(COOK, "0")  # skip description
     send(COOK, "2")  # menu done
     return COOK
 

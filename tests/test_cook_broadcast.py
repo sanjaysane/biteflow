@@ -31,10 +31,18 @@ def test_invalid_price_rejected_keeps_progress(db, wa, send):
     assert session["data"]["menu_step"] == "price"
     assert session["data"]["pending_name"] == "Samosa"
     assert db.get_active_menus(COOK) == []
-    # recover with a valid price
+    # recover with a valid price → photo step
     send(COOK, "3.25")
+    session = db.get_session(COOK)
+    assert session["data"]["menu_step"] == "photo"
+    assert db.get_active_menus(COOK) == []  # saved only after all steps
+    send(COOK, "0")  # skip photo
+    send(COOK, "rice, peas")  # ingredients
+    send(COOK, "0")  # skip description
     items = db.get_active_menus(COOK)
     assert len(items) == 1 and float(items[0]["base_price"]) == 3.25
+    assert items[0]["ingredients"] == "rice, peas"
+    assert items[0]["photo_ref"] is None
 
 
 def test_rebroadcast_replaces_old_menu(db, wa, send, cook_with_menu):
@@ -43,6 +51,9 @@ def test_rebroadcast_replaces_old_menu(db, wa, send, cook_with_menu):
     send(COOK, "Idli")  # (old menu deactivated at broadcast start)
     assert db.get_active_menus(COOK) == []
     send(COOK, "5")
+    send(COOK, "0")  # skip photo
+    send(COOK, "0")  # skip ingredients
+    send(COOK, "0")  # skip description
     send(COOK, "2")  # done
     items = db.get_active_menus(COOK)
     assert len(items) == 1 and items[0]["item_name"] == "Idli"

@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS users (
   system_role         system_role NOT NULL,
   preferred_language  TEXT NOT NULL DEFAULT 'en'
                       CHECK (preferred_language IN ('en', 'es', 'hi')),
+  display_name        TEXT,  -- human nickname; phone is the fallback
   registration_timestamp TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 -- High-frequency telephone routing: every inbound webhook hits this index.
@@ -65,6 +66,8 @@ CREATE TABLE IF NOT EXISTS menus (
   description   TEXT NOT NULL DEFAULT '',
   base_price    NUMERIC(10, 2) NOT NULL CHECK (base_price > 0),
   language_iso  TEXT NOT NULL DEFAULT 'en',
+  photo_ref     TEXT,  -- "photo:<wa-media-id>" | "sample:<label>"
+  ingredients   TEXT NOT NULL DEFAULT '',
   active_status BOOLEAN NOT NULL DEFAULT TRUE,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
