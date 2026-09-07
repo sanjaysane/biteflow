@@ -14,7 +14,6 @@ from __future__ import annotations
 import re
 
 from ..context import Ctx, parse_choice, parse_price
-from ..payments import money
 from . import digest as D
 from . import economics as E
 from . import marketing as MK
@@ -78,7 +77,13 @@ def show_inventory(ctx: Ctx) -> None:
     ings = ctx.db.get_ingredients(ctx.phone)
     lines = [ctx.i18n.t(ctx.lang, "o_inv_title")]
     if not ings:
-        lines.append(ctx.i18n.t(ctx.lang, "o_inv_empty"))
+        # First visit: seed a realistic starter pantry instead of showing
+        # a bogus all-zero stock list. Quantities are sample data — the
+        # cook is told to correct them to their real kitchen.
+        from . import economics as E
+
+        ings = E.seed_default_inventory(ctx.db, ctx.phone, ctx.lang)
+        lines.append(ctx.i18n.t(ctx.lang, "o_inv_seeded"))
     for n, ing in enumerate(ings, 1):
         lines.append(
             ctx.i18n.t(
@@ -125,14 +130,14 @@ def handle_inv_add_unit(ctx: Ctx) -> None:
         ctx.reply("o_inv_add_unit", name=ctx.session["data"].get("inv_name", ""))
         return
     unit = S.UNITS[choice - 1]
-    ctx.reply("o_inv_add_cost", unit=unit)
+    ctx.reply("o_inv_add_cost", unit=unit, cur=ctx.currency())
     ctx.set_state(S.O_INV_ADD_COST, inv_unit=unit)
 
 
 def handle_inv_add_cost(ctx: Ctx) -> None:
     cost = parse_price(ctx.text)
     if cost is None:
-        ctx.reply("o_inv_add_cost", unit=ctx.session["data"].get("inv_unit", ""))
+        ctx.reply("o_inv_add_cost", unit=ctx.session["data"].get("inv_unit", ""), cur=ctx.currency())
         return
     data = ctx.session["data"]
     ctx.reply(
@@ -172,7 +177,7 @@ def handle_inv_add_low(ctx: Ctx) -> None:
         name=ing["name"],
         stock=f"{float(ing['stock_qty']):g}",
         unit=ing["unit"],
-        cost=money(ing["unit_cost"]),
+        cost=ctx.money(ing["unit_cost"]),
         low=f"{low:g}",
     )
     show_inventory(ctx)
@@ -220,7 +225,7 @@ def handle_restock_qty(ctx: Ctx) -> None:
         "o_restock_price",
         name=ing["name"],
         unit=ing["unit"],
-        old=money(float(ing["unit_cost"])),
+        old=ctx.money(float(ing["unit_cost"])),
     )
     ctx.set_state(S.O_RESTOCK_PRICE, restock_id=ing["id"], restock_qty=qty)
 
@@ -242,7 +247,7 @@ def handle_restock_price(ctx: Ctx) -> None:
                 "o_restock_price",
                 name=ing["name"],
                 unit=ing["unit"],
-                old=money(float(ing["unit_cost"])),
+                old=ctx.money(float(ing["unit_cost"])),
             )
             return
     old_cost = float(ing["unit_cost"])
@@ -283,7 +288,7 @@ def show_recipes(ctx: Ctx) -> None:
                     ctx.lang,
                     "o_rec_line_noprice",
                     dish=recipe["dish_name"],
-                    cost=money(cost),
+                    cost=ctx.money(cost),
                 )
             )
         else:
@@ -292,7 +297,7 @@ def show_recipes(ctx: Ctx) -> None:
                     ctx.lang,
                     "o_rec_line",
                     dish=recipe["dish_name"],
-                    cost=money(cost),
+                    cost=ctx.money(cost),
                     margin=f"{m * 100:.0f}",
                 )
             )
@@ -316,7 +321,7 @@ def handle_recipes(ctx: Ctx) -> None:
         return
     lines = [ctx.i18n.t(ctx.lang, "o_rec_dish")]
     for n, item in enumerate(items, 1):
-        lines.append(f"{n}️⃣ {item['item_name']} (${money(item['base_price'])})")
+        lines.append(f"{n}️⃣ {item['item_name']} ({ctx.money(item['base_price'])})")
     ctx.wa.send_text(ctx.phone, "\n".join(lines))
     ctx.set_state(S.O_REC_DISH)
 
@@ -346,7 +351,7 @@ def _rec_ing_prompt(ctx: Ctx, recipe: dict, dish: str) -> None:
         return
     lines = []
     for n, ing in enumerate(ings, 1):
-        lines.append(f"{n}️⃣ {ing['name']} (${money(ing['unit_cost'])}/{ing['unit']})")
+        lines.append(f"{n}️⃣ {ing['name']} ({ctx.money(ing['unit_cost'])}/{ing['unit']})")
     ctx.reply("o_rec_ing", items="\n".join(lines))
     ctx.set_state(S.O_REC_ING, recipe_id=recipe["id"], dish=dish)
 
@@ -372,7 +377,7 @@ def handle_rec_ing(ctx: Ctx) -> None:
         ctx.reply(
             "o_rec_done",
             dish=dish,
-            cost=money(cost),
+            cost=ctx.money(cost),
             margin=f"{m * 100:.0f}" if m is not None else "–",
         )
         show_recipes(ctx)
@@ -494,7 +499,7 @@ def handle_cost_label(ctx: Ctx) -> None:
     if not label or len(label) > 120:
         ctx.reply("o_cost_label", kind=ctx.session["data"].get("cost_kind", "").upper())
         return
-    ctx.reply("o_cost_amount", label=label)
+    ctx.reply("o_cost_amount", label=label, cur=ctx.currency())
     ctx.set_state(S.O_COST_AMOUNT, cost_label=label)
 
 
@@ -502,7 +507,7 @@ def handle_cost_amount(ctx: Ctx) -> None:
     amount = parse_price(ctx.text)
     data = ctx.session["data"]
     if amount is None:
-        ctx.reply("o_cost_amount", label=data.get("cost_label", ""))
+        ctx.reply("o_cost_amount", label=data.get("cost_label", ""), cur=ctx.currency())
         return
     kind = data.get("cost_kind", "opex")
     ctx.db.add_business_cost(ctx.phone, kind, data.get("cost_label", ""), amount)
@@ -510,7 +515,7 @@ def handle_cost_amount(ctx: Ctx) -> None:
         "o_cost_logged",
         kind=kind.upper(),
         label=data.get("cost_label", ""),
-        amount=money(amount),
+        amount=ctx.money(amount),
     )
     show_finance(ctx)
 
@@ -527,10 +532,10 @@ def _show_projection(ctx: Ctx) -> None:
                 "o_proj_line",
                 dish=row["dish"],
                 per_day=f"{row['per_day']:g}",
-                weekly=money(row["weekly"]),
+                weekly=ctx.money(row["weekly"]),
             )
         )
-    lines.append(ctx.i18n.t(ctx.lang, "o_proj_total", total=money(proj["total"])))
+    lines.append(ctx.i18n.t(ctx.lang, "o_proj_total", total=ctx.money(proj["total"])))
     ctx.wa.send_text(ctx.phone, "\n".join(lines))
     show_finance(ctx)
 
@@ -566,13 +571,13 @@ def _show_reconciliation(ctx: Ctx) -> None:
         ctx.i18n.t(
             ctx.lang,
             "o_recon_cod",
-            collected=money(cod),
-            pending=money(round(cod_pending, 2)),
+            collected=ctx.money(cod),
+            pending=ctx.money(round(cod_pending, 2)),
         )
     )
     lines.append(
         ctx.i18n.t(
-            ctx.lang, "o_recon_p2p", confirmed=money(p2p_ok), awaiting=money(p2p_wait)
+            ctx.lang, "o_recon_p2p", confirmed=ctx.money(p2p_ok), awaiting=ctx.money(p2p_wait)
         )
     )
     ctx.wa.send_text(ctx.phone, "\n".join(lines))
@@ -611,7 +616,7 @@ def show_referrals(ctx: Ctx) -> None:
     lines = [
         ctx.i18n.t(ctx.lang, "m_ref_title"),
         ctx.i18n.t(
-            ctx.lang, "m_ref_info", code=ref["code"], reward=money(ref["reward_amount"])
+            ctx.lang, "m_ref_info", code=ref["code"], reward=ctx.money(ref["reward_amount"])
         ),
         ctx.i18n.t(ctx.lang, "m_ref_menu"),
     ]
@@ -627,18 +632,18 @@ def handle_referral(ctx: Ctx) -> None:
     if choice == 0:
         show_marketing_home(ctx)
         return
-    ctx.reply("m_ref_reward")
+    ctx.reply("m_ref_reward", cur=ctx.currency())
     ctx.set_state(S.M_REF_REWARD)
 
 
 def handle_referral_reward(ctx: Ctx) -> None:
     reward = _parse_qty(ctx.text)
     if reward is None or reward > 20:
-        ctx.reply("m_ref_reward")
+        ctx.reply("m_ref_reward", cur=ctx.currency())
         return
     ref = MK.get_or_create_referral(ctx.db, ctx.phone, ctx.phone)
     ctx.db.set_referral_reward(int(ref["id"]), reward)
-    ctx.reply("m_ref_saved", reward=money(reward), code=ref["code"])
+    ctx.reply("m_ref_saved", reward=ctx.money(reward), code=ref["code"])
     show_referrals(ctx)
 
 
@@ -658,7 +663,7 @@ def _offer_desc(ctx: Ctx, offer: dict | None) -> str:
         return ctx.i18n.t(ctx.lang, "m_offer_desc_pct", pct=val)
     if otype == "first_order_free_item":
         return ctx.i18n.t(ctx.lang, "m_offer_desc_item", item=val)
-    return ctx.i18n.t(ctx.lang, "m_offer_desc_delivery", value=money(val))
+    return ctx.i18n.t(ctx.lang, "m_offer_desc_delivery", value=ctx.money(val))
 
 
 def show_offer(ctx: Ctx) -> None:
@@ -710,7 +715,7 @@ def handle_offer_value(ctx: Ctx) -> None:
     else:
         value_amt = parse_price(ctx.text)
         if value_amt is None:
-            ctx.reply("m_offer_value_delivery")
+            ctx.reply("m_offer_value_delivery", cur=ctx.currency())
             return
         value = f"{value_amt:.2f}"
     offer = ctx.db.set_offer(ctx.phone, otype, value, active=True)
@@ -836,7 +841,7 @@ def handle_referral_code(ctx: Ctx) -> None:
     cart = data.get("cart", [])
     total = cart_total(cart)
     result = MK.apply_referral(
-        ctx.db, data.get("cook_phone", ""), ctx.phone, text, total
+        ctx.db, data.get("cook_phone", ""), ctx.phone, text, total, ctx.lang
     )
     if not result["ok"]:
         reason_key = {
@@ -856,7 +861,7 @@ def handle_referral_code(ctx: Ctx) -> None:
         }
     )
     ctx.set_state(M.C_REVIEW, discounts=discounts)
-    ctx.reply("c_referral_ok", discount=money(result["discount"]))
+    ctx.reply("c_referral_ok", discount=ctx.money(result["discount"]))
     _reshow_review(ctx)
 
 
@@ -877,7 +882,7 @@ def handle_optin(ctx: Ctx) -> None:
     choice = parse_choice(ctx.text, 1, 2)
     if choice is None:
         cook = ctx.session["data"].get("cook_phone", "")
-        ctx.reply("c_optin_ask", cook=cook)
+        ctx.reply("c_optin_ask", cook=ctx.db.display_name(cook))
         return
     cook_phone = ctx.session["data"].get("cook_phone", "")
     if cook_phone:

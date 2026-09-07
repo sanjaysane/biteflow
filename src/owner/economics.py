@@ -20,6 +20,54 @@ def utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+# ── starter pantry ─────────────────────────────────────────────────
+# A brand-new cook's inventory used to read "No ingredients yet" with zero
+# stock everywhere — bogus for a working kitchen. The first time a cook
+# opens inventory with nothing logged, seed a realistic starter pantry of
+# typical Indian home-kitchen staples with plausible quantities. Costs are
+# locale-plausible (INR for hi/mr, USD for en/es); quantities are SAMPLE
+# data and the cook is told to correct them to their real kitchen.
+#
+# Each row: (name, unit, unit_cost, stock_qty, low_stock_threshold).
+
+_STARTER_PANTRY_IN: tuple[tuple[str, str, float, float, float], ...] = (
+    ("Wheat flour (Atta)", "kg", 45.0, 10.0, 2.0),
+    ("Basmati rice", "kg", 120.0, 5.0, 1.0),
+    ("Toor dal", "kg", 160.0, 2.0, 0.5),
+    ("Sunflower oil", "L", 140.0, 5.0, 1.0),
+    ("Sugar", "kg", 45.0, 2.0, 0.5),
+    ("Salt", "kg", 25.0, 1.0, 0.25),
+    ("Turmeric (Haldi)", "g", 0.30, 500.0, 100.0),
+    ("Red chilli powder", "g", 0.80, 250.0, 50.0),
+    ("Garam masala", "g", 1.20, 200.0, 50.0),
+    ("Cumin (Jeera)", "g", 0.90, 250.0, 50.0),
+)
+
+_STARTER_PANTRY_US: tuple[tuple[str, str, float, float, float], ...] = (
+    ("Wheat flour (Atta)", "kg", 2.0, 10.0, 2.0),
+    ("Basmati rice", "kg", 3.5, 5.0, 1.0),
+    ("Toor dal", "kg", 4.0, 2.0, 0.5),
+    ("Sunflower oil", "L", 9.0, 5.0, 1.0),
+    ("Sugar", "kg", 1.5, 2.0, 0.5),
+    ("Salt", "kg", 1.0, 1.0, 0.25),
+    ("Turmeric (Haldi)", "g", 0.02, 500.0, 100.0),
+    ("Red chilli powder", "g", 0.03, 250.0, 50.0),
+    ("Garam masala", "g", 0.05, 200.0, 50.0),
+    ("Cumin (Jeera)", "g", 0.04, 250.0, 50.0),
+)
+
+
+def seed_default_inventory(
+    db: Database, cook_phone: str, lang: str = "en"
+) -> list[dict]:
+    """Seed a realistic starter pantry; returns the created ingredients."""
+    pantry = _STARTER_PANTRY_IN if lang in ("hi", "mr") else _STARTER_PANTRY_US
+    return [
+        db.add_ingredient(cook_phone, name, unit, unit_cost, stock_qty, low)
+        for name, unit, unit_cost, stock_qty, low in pantry
+    ]
+
+
 # ── food cost & margin ───────────────────────────────────────────────
 def dish_food_cost(recipe_items: list[dict]) -> float:
     """Sum over BOM lines: qty_per_dish × ingredient unit_cost.
@@ -90,7 +138,7 @@ def check_menu_margins(
                     lang,
                     "o_price_alert_line",
                     dish=f["dish_name"],
-                    cost=money(f["food_cost"]),
+                    cost=money(f["food_cost"], _cook_lang(db, cook_phone)),
                     margin=f"{f['margin'] * 100:.1f}",
                 )
             )
@@ -154,8 +202,8 @@ def apply_ingredient_price_change(
                 _cook_lang(db, cook_phone),
                 "o_price_alert_title",
                 ingredient=ingredient["name"],
-                old=money(old_cost),
-                new=money(new_cost),
+                old=money(old_cost, _cook_lang(db, cook_phone)),
+                new=money(new_cost, _cook_lang(db, cook_phone)),
             )
         ]
         for f in flagged:
@@ -164,7 +212,7 @@ def apply_ingredient_price_change(
                     _cook_lang(db, cook_phone),
                     "o_price_alert_line",
                     dish=f["dish_name"],
-                    cost=money(f["food_cost"]),
+                    cost=money(f["food_cost"], _cook_lang(db, cook_phone)),
                     margin=f"{f['margin'] * 100:.1f}",
                 )
             )
