@@ -134,6 +134,7 @@ def process_incoming(
     msg_type: str = "text",
     media_id: str | None = None,
     default_lang: str = "en",
+    profile_name: str | None = None,
 ) -> None:
     """Single entry point for every inbound WhatsApp message."""
     user = db.get_user(phone)
@@ -142,6 +143,18 @@ def process_incoming(
         session = fresh_session(phone, default_lang)
         # Brand-new chats start unregistered; language comes from default.
     lang = resolve_language(user, session, default_lang)
+
+    # Nickname capture: the WhatsApp profile name becomes the display name
+    # shown on every customer-facing surface (menus, order pings) instead
+    # of the raw phone number. Never overwrites an explicitly set name.
+    if profile_name:
+        if user is not None and not user.get("display_name"):
+            db.set_display_name(phone, profile_name)
+            user = db.get_user(phone)
+        elif user is None:
+            session.setdefault("data", {}).setdefault(
+                "profile_name", profile_name[:80]
+            )
 
     ctx = Ctx(
         db=db,

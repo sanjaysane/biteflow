@@ -7,6 +7,8 @@ from dataclasses import dataclass
 
 from .db import Database
 from .i18n import I18n
+from .payments import currency_symbol
+from .payments import money as _money
 from .whatsapp import WhatsAppClient
 
 
@@ -30,6 +32,15 @@ class Ctx:
 
     def send_to(self, phone: str, key: str, lang: str, **kwargs) -> None:
         self.wa.send_text(phone, self.i18n.t(lang, key, **kwargs))
+
+    # ── locale-aware helpers ──
+    def money(self, value: float | str) -> str:
+        """Format money with the currency of the READER's locale
+        (₹ for hi/mr, $ for en/es)."""
+        return _money(value, self.lang)
+
+    def currency(self) -> str:
+        return currency_symbol(self.lang)
 
     # ── session ──
     def set_state(self, state: str, **data_updates) -> None:
@@ -69,7 +80,7 @@ def parse_price(text: str | None) -> float | None:
     """Parse '8.50' → 8.5. Returns None for anything not a positive amount."""
     if not text:
         return None
-    s = text.strip().lstrip("$")
+    s = text.strip().lstrip("$₹")
     if not _PRICE_RE.fullmatch(s):
         return None
     try:

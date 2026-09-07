@@ -36,7 +36,12 @@ def get_or_create_referral(
 
 
 def apply_referral(
-    db: Database, cook_phone: str, redeemer_phone: str, code: str, order_total: float
+    db: Database,
+    cook_phone: str,
+    redeemer_phone: str,
+    code: str,
+    order_total: float,
+    lang: str = "en",
 ) -> dict:
     """Validate a typed code and compute the discount.
 
@@ -74,7 +79,7 @@ def apply_referral(
     return {
         "ok": True,
         "discount": discount,
-        "desc": f"Referral {code} −${money(discount)}",
+        "desc": f"Referral {code} −{money(discount, lang)}",
         "referral_id": int(ref["id"]),
         "reason": "",
     }
@@ -102,7 +107,7 @@ def referrer_credit_available(db: Database, cook_phone: str, phone: str) -> floa
 
 
 def consume_referrer_credit(
-    db: Database, cook_phone: str, phone: str, order_total: float
+    db: Database, cook_phone: str, phone: str, order_total: float, lang: str = "en"
 ) -> dict:
     """Auto-apply earned credit to the referrer's own order review."""
     balance = referrer_credit_available(db, cook_phone, phone)
@@ -110,7 +115,7 @@ def consume_referrer_credit(
         return {"discount": 0.0, "desc": ""}
     use = round(min(balance, order_total), 2)
     db.add_credit_ledger(cook_phone, phone, -use, "credit applied to own order")
-    return {"discount": use, "desc": f"Referral credit −${money(use)}"}
+    return {"discount": use, "desc": f"Referral credit −{money(use, lang)}"}
 
 
 # ── freemium first-order offers ──────────────────────────────────────
@@ -128,6 +133,7 @@ def first_order_offer(
     customer_phone: str,
     cart_total: float,
     cart: list[dict],
+    lang: str = "en",
 ) -> dict:
     """Auto-applied freemium for first-time customers. {"discount", "desc"}."""
     if not is_first_order(db, cook_phone, customer_phone):
@@ -144,7 +150,7 @@ def first_order_offer(
         discount = round(cart_total * pct / 100.0, 2)
         return {
             "discount": discount,
-            "desc": f"First-order {pct:g}% off −${money(discount)}",
+            "desc": f"First-order {pct:g}% off −{money(discount, lang)}",
         }
     if otype == "first_order_free_item":
         # value_text holds the menu item name; cheapest cart line free.
@@ -163,7 +169,7 @@ def first_order_offer(
         discount = round(min(flat, cart_total), 2)
         return {
             "discount": discount,
-            "desc": f"First order: free delivery −${money(discount)} 🛵",
+            "desc": f"First order: free delivery −{money(discount, lang)} 🛵",
         }
     return {"discount": 0.0, "desc": ""}
 

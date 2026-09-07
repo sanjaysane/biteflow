@@ -76,10 +76,16 @@ def verify_webhook(
 
 # ── Inbound messages ───────────────────────────────────────────────
 def _extract_messages(payload: dict):
-    """Yield (from_phone, text, msg_type, media_id) from a Meta payload."""
+    """Yield (from_phone, text, msg_type, media_id, profile_name) from a
+    Meta payload. profile_name is the sender's WhatsApp profile name
+    (value.contacts[0].profile.name) when the payload carries it."""
     for entry in payload.get("entry", []):
         for change in entry.get("changes", []):
             value = change.get("value", {})
+            contacts = value.get("contacts") or []
+            profile_name = None
+            if contacts:
+                profile_name = ((contacts[0].get("profile") or {}).get("name") or None)
             for msg in value.get("messages", []):
                 raw_from = msg.get("from", "")
                 phone = normalize_phone(raw_from)
@@ -99,6 +105,7 @@ def _extract_messages(payload: dict):
                     text,
                     mtype if mtype in ("text", "image") else "other",
                     media_id,
+                    profile_name,
                 )
 
 
@@ -110,7 +117,7 @@ async def receive_webhook(request: Request):
         return {"ok": False, "error": "invalid JSON"}
     if not isinstance(payload, dict):
         return {"ok": True}
-    for phone, text, mtype, media_id in _extract_messages(payload):
+    for phone, text, mtype, media_id, profile_name in _extract_messages(payload):
         try:
             process_incoming(
                 app.state.db,
@@ -121,6 +128,7 @@ async def receive_webhook(request: Request):
                 msg_type=mtype,
                 media_id=media_id,
                 default_lang=settings.default_language,
+                profile_name=profile_name,
             )
         except Exception as exc:  # noqa: BLE001 - never 500 a webhook; log and continue
             print(f"[biteflow] handler error for {phone}: {exc!r}")

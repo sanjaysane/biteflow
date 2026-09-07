@@ -18,10 +18,41 @@ from __future__ import annotations
 
 from .db import Database
 
+# ── Locale-aware currency ──────────────────────────────────────────
+# BiteFlow serves both US ($, en/es) and India (₹, hi/mr) kitchens. Money
+# is always rendered with the symbol of the READER's locale so an India
+# seller never sees USD on their own menu, and vice versa.
 
-def money(value: float | str) -> str:
-    """Format a numeric value as 2-decimal money for chat display."""
-    return f"{float(value):.2f}"
+_INR_LOCALES = ("hi", "mr")
+
+
+def currency_symbol(lang: str) -> str:
+    """'$' for en/es, '₹' for hi/mr (India)."""
+    return "₹" if (lang or "en") in _INR_LOCALES else "$"
+
+
+def _inr_grouped(amount: float) -> str:
+    """Indian digit grouping: 1,00,000.00 (last 3 digits, then pairs)."""
+    int_part, _, dec = f"{amount:.2f}".partition(".")
+    if len(int_part) > 3:
+        tail = int_part[-3:]
+        head = int_part[:-3]
+        groups: list[str] = []
+        while len(head) > 2:
+            groups.insert(0, head[-2:])
+            head = head[:-2]
+        groups.insert(0, head)
+        int_part = ",".join([*groups, tail])
+    return f"₹{int_part}.{dec}"
+
+
+def money(value: float | str, lang: str = "en") -> str:
+    """Format a numeric value as 2-decimal money for chat display,
+    with the currency symbol of the reader's locale."""
+    amount = float(value)
+    if (lang or "en") in _INR_LOCALES:
+        return _inr_grouped(amount)
+    return f"${amount:,.2f}"
 
 
 def cart_total(cart: list[dict]) -> float:

@@ -29,11 +29,11 @@ def send_daily_digest(
     lang = user.get("preferred_language", "en")
 
     lines = [i18n.t(lang, "o_digest_title")]
-    lines.append(i18n.t(lang, "o_digest_rev", rev=money(pnl["revenue"])))
-    lines.append(i18n.t(lang, "o_digest_food", cost=money(pnl["food_cost"])))
-    lines.append(i18n.t(lang, "o_digest_opex", opex=money(pnl["opex"])))
-    lines.append(i18n.t(lang, "o_digest_capex", capex=money(pnl["capex"])))
-    lines.append(i18n.t(lang, "o_digest_net", net=money(pnl["net"])))
+    lines.append(i18n.t(lang, "o_digest_rev", rev=money(pnl["revenue"], lang)))
+    lines.append(i18n.t(lang, "o_digest_food", cost=money(pnl["food_cost"], lang)))
+    lines.append(i18n.t(lang, "o_digest_opex", opex=money(pnl["opex"], lang)))
+    lines.append(i18n.t(lang, "o_digest_capex", capex=money(pnl["capex"], lang)))
+    lines.append(i18n.t(lang, "o_digest_net", net=money(pnl["net"], lang)))
     for d in pnl["dishes"]:
         m = f"{d['margin'] * 100:.0f}" if d["margin"] is not None else "–"
         lines.append(
@@ -42,7 +42,7 @@ def send_daily_digest(
                 "o_digest_dish",
                 dish=d["dish"],
                 qty=d["qty"],
-                rev=money(d["revenue"]),
+                rev=money(d["revenue"], lang),
                 margin=m,
             )
         )
