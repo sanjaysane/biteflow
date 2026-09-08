@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS ingredients (
   cook_phone          TEXT NOT NULL REFERENCES users (phone_number)
                       ON DELETE CASCADE,
   name                TEXT NOT NULL CHECK (char_length(name) BETWEEN 1 AND 80),
-  unit                TEXT NOT NULL CHECK (unit IN ('kg', 'L', 'pcs')),
+  unit                TEXT NOT NULL CHECK (unit IN ('kg', 'L', 'g', 'pcs')),
   unit_cost           NUMERIC(10, 2) NOT NULL CHECK (unit_cost >= 0),
   stock_qty           NUMERIC(12, 3) NOT NULL DEFAULT 0 CHECK (stock_qty >= 0),
   low_stock_threshold NUMERIC(12, 3) NOT NULL DEFAULT 0 CHECK (low_stock_threshold >= 0),

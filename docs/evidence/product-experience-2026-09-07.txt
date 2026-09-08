@@ -1,0 +1,68 @@
+
+========================================================================
+FIX #2 + mr-LOCALE: user row on LIVE Postgres after picking Marathi
+========================================================================
+phone_number      : +15550002222
+preferred_language: mr
+system_role       : customer
+session lang      : mr
+
+========================================================================
+FIX #1 + FIX #3: menu listing the mr customer actually received
+========================================================================
+📋 Meena Kaki चा मेनू:
+1. 🍛 Veg Pulao — ₹85.00
+   🧂 rice, peas, carrots, ghee
+   Slow-cooked in ghee, just like home
+
+0️⃣ बिल करा 🧾
+पदार्थाचा क्रमांक लिहा, किंवा बिलासाठी 0.
+
+[image messages sent]
+  to=+15550002222  photo_ref=photo:wamid.demo.pulao
+  caption=🍛 Veg Pulao — ₹85.00
+
+========================================================================
+FIX #2: nickname shown (not phone number)
+========================================================================
+display_name(+15550001111) -> Meena Kaki
+
+========================================================================
+FIX #3: locale-aware currency (₹ for mr, $ for en)
+========================================================================
+money(85, 'mr') = ₹85.00
+money(85, 'en') = $85.00
+money(125000.5, 'mr') = ₹1,25,000.50  (Indian grouping)
+
+========================================================================
+FIX #4: raw-material stock rows (non-zero, INR costs for mr cook)
+========================================================================
+  Wheat flour (Atta)         10.0 kg   cost ₹45.00/kg
+  Basmati rice                5.0 kg   cost ₹120.00/kg
+  Toor dal                    2.0 kg   cost ₹160.00/kg
+  Sunflower oil               5.0 L    cost ₹140.00/L
+  Sugar                       2.0 kg   cost ₹45.00/kg
+  Salt                        1.0 kg   cost ₹25.00/kg
+  Turmeric (Haldi)          500.0 g    cost ₹0.30/g
+  Red chilli powder         250.0 g    cost ₹0.80/g
+  Garam masala              200.0 g    cost ₹1.20/g
+  Cumin (Jeera)             250.0 g    cost ₹0.90/g
+
+========================================================================
+mr ROUND-TRIP: Marathi strings read back from live Postgres
+========================================================================
+customer display_name: संजय साने
+dish name            : पनीर टिक्का
+dish description     : मसालेदार पनीर
+dish ingredients     : paneer, दही, मसाले
+
+========================================================================
+CATALOG: users_preferred_language_check on live Postgres
+========================================================================
+CHECK ((preferred_language = ANY (ARRAY['en'::text, 'es'::text, 'hi'::text, 'mr'::text])))
+
+========================================================================
+SUMMARY
+========================================================================
+All engine output above came from the real state machine + real
+PostgreSQL. No mocks, no hand-written values.

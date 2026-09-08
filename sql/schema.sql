@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS users (
                       CHECK (phone_number ~ '^\+[1-9][0-9]{6,14}$'),
   system_role         system_role NOT NULL,
   preferred_language  TEXT NOT NULL DEFAULT 'en'
-                      CHECK (preferred_language IN ('en', 'es', 'hi')),
+                      CHECK (preferred_language IN ('en', 'es', 'hi', 'mr')),
   display_name        TEXT,  -- human nickname; phone is the fallback
   registration_timestamp TIMESTAMPTZ NOT NULL DEFAULT now()
 );

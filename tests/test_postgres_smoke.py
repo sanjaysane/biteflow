@@ -94,3 +94,71 @@ def test_postgres_brand_new_chat_flow():
     assert user is not None
     assert user["system_role"] == "customer"
     assert db.get_session(phone)["role"] == "customer"
+
+
+def test_postgres_marathi_locale_accepted():
+    """Regression: the users.preferred_language CHECK must accept 'mr'.
+
+    models.SUPPORTED_LANGUAGES includes 'mr' and the chat language menu
+    offers option 4 = Marathi, but the original schema.sql CHECK allowed
+    only ('en', 'es', 'hi') — a user selecting Marathi crashed
+    set_user_language with a check_violation (schema.sql fixed, plus
+    migration 006 for existing databases). This test proves 'mr' round-
+    trips on a REAL PostgreSQL, including Marathi UTF-8 strings.
+    """
+    import psycopg
+
+    db = PostgresDatabase(DB_URL)
+    phone = _phone()
+
+    # 1. upsert with 'mr' directly (this exact call used to 500 on Postgres)
+    user = db.upsert_user(phone, "customer", "mr")
+    assert user["preferred_language"] == "mr"
+
+    # 2. switch back and forth through the real set_user_language path
+    db.set_user_language(phone, "en")
+    assert db.get_user(phone)["preferred_language"] == "en"
+    db.set_user_language(phone, "mr")
+    assert db.get_user(phone)["preferred_language"] == "mr"
+
+    # 3. Marathi UTF-8 display name round-trips byte-identical
+    db.set_display_name(phone, "संजय साने")
+    assert db.get_user(phone)["display_name"] == "संजय साने"
+
+    # 4. the CHECK constraint itself names 'mr' (guards against a future
+    #    schema.sql edit re-breaking this without touching any data)
+    with psycopg.connect(DB_URL) as c, c.cursor() as cur:
+        cur.execute(
+            """
+            SELECT pg_get_constraintdef(oid)
+            FROM pg_constraint
+            WHERE conrelid = 'users'::regclass
+              AND conname = 'users_preferred_language_check'
+            """
+        )
+        definition = cur.fetchone()[0]
+    assert "'mr'" in definition, f"CHECK missing 'mr': {definition}"
+
+
+def test_postgres_inventory_seed_accepts_gram_unit():
+    """Regression: ingredients_unit_check must accept 'g' (grams).
+
+    seed_default_inventory() seeds spice rows in grams and
+    test_phase_a asserts unit == 'g', but the original CHECK allowed only
+    ('kg', 'L', 'pcs') — on real Postgres the seed crashed with a
+    CheckViolation while the FakeDatabase suite stayed green.
+    (002 migration fixed, plus migration 007 for existing databases.)
+    """
+    from src.owner import economics as E
+
+    db = PostgresDatabase(DB_URL)
+    phone = _phone()
+    db.upsert_user(phone, "cook", "en")
+
+    ings = E.seed_default_inventory(db, phone, "mr")
+    assert len(ings) == 10
+    units = {i["unit"] for i in ings}
+    assert "g" in units, f"expected gram-unit rows, got {units}"
+    assert all(float(i["stock_qty"]) > 0 for i in ings)
+    haldi = next(i for i in ings if i["name"] == "Turmeric (Haldi)")
+    assert haldi["unit"] == "g" and float(haldi["stock_qty"]) == 500.0
