@@ -1,0 +1,214 @@
+========================================================================
+F-18 EVIDENCE: full money loop in Marathi — real state machine, no mocks
+========================================================================
+Date: 2026-09-07. Driven by the real state machine (src/state_machine.py)
+with FakeDatabase + FakeWhatsAppClient + real Marathi locale (locales/mr.json).
+Lines prefixed [driver] describe the input action; everything else is
+verbatim engine output. Order: cook lists dish -> customer orders -> cook
+is notified -> customer submits UPI screenshot -> cook approves payment ->
+cook accepts via open orders -> status updates to completed.
+payment_status: unpaid -> pending_approval -> verified
+order_status:   received -> accepted -> cooking -> out_for_delivery -> completed
+
+--- PART 1: cook's dish-listing flow (name -> price -> photo -> ingredients
+---         -> description -> live confirmation)
+[COOK sends] [cook hello] 'hello'
+[biteflow -> COOK] [cook hello] 🍲 Welcome to BiteFlow! Hot home-cooked meals, ordered right here in WhatsApp. No app needed.
+[biteflow -> COOK] [cook hello] Who are you today?
+1️⃣ Customer — I want to order food
+2️⃣ Cook — I want to sell food
+
+Reply with 1 or 2.
+[COOK sends] [switch language] 'भाषा'
+[biteflow -> COOK] [switch language] 🌍 Choose your language / Elige tu idioma / अपनी भाषा चुनें
+1️⃣ English
+2️⃣ Español
+3️⃣ हिन्दी
+4️⃣ मराठी
+[COOK sends] [मराठी] '4'
+[biteflow -> COOK] [मराठी] ✅ भाषा बदलली!
+[biteflow -> COOK] [मराठी] कृपया 1 किंवा 2 लिहा.
+[COOK sends] [register as cook] '2'
+[biteflow -> COOK] [register as cook] 🎉 स्वयंपाकी म्हणून नोंदणी झाली! चला, तुमचं स्वयंपाकघर सुरू करूया.
+[biteflow -> COOK] [register as cook] 👩‍🍳 स्वयंपाकी मेनू:
+1️⃣ आजचा मेनू ठरवा 📋
+2️⃣ चालू ऑर्डरी पहा 📦
+3️⃣ व्यवसाय 📊
+4️⃣ मार्केटिंग 📣
+[COOK sends] [set today's menu] '1'
+[biteflow -> COOK] [set today's menu] पदार्थाचं नाव काय? (नाव लिहा, उदा. व्हेज पुलाव) 🍛
+[COOK sends] [dish name] 'व्हेज पुलाव'
+[biteflow -> COOK] [dish name] "व्हेज पुलाव" ची किंमत? ₹ मध्ये रक्कम लिहा, उदा. 140 💰
+[COOK sends] [price INR] '85'
+[biteflow -> COOK] [price INR] 📸 "व्हेज पुलाव" चा फोटो पाठवा — ग्राहक डोळ्यांनी विकत घेतात! 👀
+नको असेल तर 0 लिहा.
+[COOK sends] [dish photo] <photo media_id=photo:wamid.demo.pulao>
+[biteflow -> COOK] [dish photo] 🧂 "व्हेज पुलाव" चं मुख्य साहित्य लिहा (स्वल्पविरामानं वेगळं करा, उदा. तांदूळ, वाटाणे, गाजर).
+नको असेल तर 0 लिहा.
+[COOK sends] [ingredients] 'तांदूळ, वाटाणे, गाजर, तूप'
+[biteflow -> COOK] [ingredients] ✍️ ग्राहकांना भुरळ पाडणारं एका ओळीचं वर्णन लिहा (उदा. "तुपात मंद आचेवर शिजवलेलं, अगदी घरच्यासारखं").
+नको असेल तर 0 लिहा.
+[COOK sends] [description] 'तुपात मंद आचेवर शिजवलेलं, अगदी घरच्यासारखं'
+[biteflow -> COOK] [description] ✅ "व्हेज पुलाव" जतन झालं — ₹85.00
+
+आणखी पदार्थ टाकायचा?
+1️⃣ हो ➕
+2️⃣ नाही, मेनू पूर्ण ✅
+[COOK sends] [menu done] '2'
+[biteflow -> COOK] [menu done] 🎉 तुमचा मेनू सुरू झाला! ग्राहक आता तुमच्याकडून ऑर्डर करू शकतात. 🍲
+[biteflow -> COOK] [menu done] 👩‍🍳 स्वयंपाकी मेनू:
+1️⃣ आजचा मेनू ठरवा 📋
+2️⃣ चालू ऑर्डरी पहा 📦
+3️⃣ व्यवसाय 📊
+4️⃣ मार्केटिंग 📣
+--- PART 2: customer orders in Marathi (menu -> item -> qty -> checkout -> confirm)
+
+[CUST sends] [customer hello] 'hello'
+[biteflow -> CUST] [customer hello] 🍲 Welcome to BiteFlow! Hot home-cooked meals, ordered right here in WhatsApp. No app needed.
+[biteflow -> CUST] [customer hello] Who are you today?
+1️⃣ Customer — I want to order food
+2️⃣ Cook — I want to sell food
+
+Reply with 1 or 2.
+[CUST sends] [switch language] 'भाषा'
+[biteflow -> CUST] [switch language] 🌍 Choose your language / Elige tu idioma / अपनी भाषा चुनें
+1️⃣ English
+2️⃣ Español
+3️⃣ हिन्दी
+4️⃣ मराठी
+[CUST sends] [मराठी] '4'
+[biteflow -> CUST] [मराठी] ✅ भाषा बदलली!
+[biteflow -> CUST] [मराठी] कृपया 1 किंवा 2 लिहा.
+[CUST sends] [register as customer] '1'
+[biteflow -> CUST] [register as customer] 🎉 ग्राहक म्हणून नोंदणी झाली! चला, चविष्ट काहीतरी शोधूया.
+[biteflow -> CUST] [register as customer] 👩‍🍳 स्वयंपाकी निवडा:
+1. 👩‍🍳 +15550001111
+
+क्रमांक लिहा.
+[CUST sends] [pick the cook] '1'
+[biteflow -> CUST] [pick the cook] 📋 +15550001111 चा मेनू:
+1. 🍛 व्हेज पुलाव — ₹85.00
+   🧂 तांदूळ, वाटाणे, गाजर, तूप
+   तुपात मंद आचेवर शिजवलेलं, अगदी घरच्यासारखं
+
+0️⃣ बिल करा 🧾
+पदार्थाचा क्रमांक लिहा, किंवा बिलासाठी 0.
+[CUST sends] [item 1] '1'
+[biteflow -> CUST] [item 1] "व्हेज पुलाव" किती हवेत?
+1 ते 9 मधला अंक लिहा. 🔢
+[CUST sends] [qty 2] '2'
+[biteflow -> CUST] [qty 2] ✅ टाकलं: व्हेज पुलाव × 2
+[biteflow -> CUST] [qty 2] 🧾 बिलासाठी 0 लिहा, किंवा आणखी पदार्थाचा क्रमांक निवडा.
+[CUST sends] [checkout] '0'
+[biteflow -> CUST] [checkout] 🧾 तुमची ऑर्डर:
+1. व्हेज पुलाव × 2 — ₹170.00
+एकूण: ₹170.00 💰
+1️⃣ ऑर्डर पक्की करा 👍
+2️⃣ रद्द करा 👎
+5️⃣ रेफरल कोड आहे? 🎟️
+[CUST sends] [confirm order] '1'
+[biteflow -> CUST] [confirm order] 💳 पैसे कसे देणार?
+1️⃣ डिलिव्हरीवर रोख 💵
+2️⃣ फोनवरून पेमेंट (UPI) 📱
+[CUST sends] [phone transfer / UPI] '2'
+[biteflow -> CUST] [phone transfer / UPI] 📱 कृपया +15550001111 ला ₹170.00 UPI ने पाठवा.
+
+मग दोन्हीपैकी एक करा:
+• पेमेंटच्या स्क्रीनशॉटचा फोटो पाठवा 📸
+• किंवा तुमचा पेमेंट रेफरन्स / ID लिहा
+
+स्वयंपाकी ते तपासेल. ✅
+[biteflow -> COOK] [phone transfer / UPI] 🔔 नवीन ऑर्डर #4!
+कडून: +15550002222
+व्हेज पुलाव × 2
+एकूण: ₹170.00 (P2P_TRANSFER)
+
+1️⃣ स्वीकारा 👍
+2️⃣ नकारा 👎
+--- PART 3: the payment beat (UPI-only instructions -> screenshot -> cook approve/deny -> verified)
+
+[CUST sends] [payment screenshot] <photo media_id=media-upi-9012>
+[biteflow -> CUST] [payment screenshot] 📸 पेमेंटचा पुरावा मिळाला! स्वयंपाकी तो तपासत आहे. मान्य झाला की तुम्हाला कळवू. ✅
+[biteflow -> COOK] [payment screenshot] 💳 ऑर्डर #4 साठी पेमेंटचा पुरावा
+कडून: +15550002222
+रक्कम: ₹170.00
+पुरावा: 📸 photo screenshot
+
+1️⃣ पेमेंट मान्य करा 👍
+2️⃣ पेमेंट नाकारा 👎
+[COOK sends] [approve payment] '1'
+[biteflow -> CUST] [approve payment] ✅ स्वयंपाक्याने पेमेंट मान्य केलं! तुमचं जेवण तयार होत आहे. 🍳
+[biteflow -> COOK] [approve payment] ✅ पेमेंट मान्य केलं. ग्राहकाला कळवलं आहे. 👍
+[biteflow -> COOK] [approve payment] 👩‍🍳 स्वयंपाकी मेनू:
+1️⃣ आजचा मेनू ठरवा 📋
+2️⃣ चालू ऑर्डरी पहा 📦
+3️⃣ व्यवसाय 📊
+4️⃣ मार्केटिंग 📣
+--- PART 4: cook accepts via open orders (accept -> customer notified -> status prompt)
+
+[COOK sends] [open orders] '2'
+[biteflow -> COOK] [open orders] 🔔 नवीन ऑर्डर #4!
+कडून: +15550002222
+व्हेज पुलाव × 2
+एकूण: ₹170.00 (P2P_TRANSFER)
+
+1️⃣ स्वीकारा 👍
+2️⃣ नकारा 👎
+[COOK sends] [cook accepts order] '1'
+[biteflow -> CUST] [cook accepts order] 🎉 छान बातमी! स्वयंपाक्याने तुमची ऑर्डर #4 स्वीकारली आहे, लवकरच शिजवायला सुरुवात होईल. 🍳
+[biteflow -> CUST] [cook accepts order] 📣 +15550001111 च्या मेनूची माहिती WhatsApp वर हवी?
+1️⃣ हो, नक्की
+2️⃣ नको, धन्यवाद
+[biteflow -> COOK] [cook accepts order] 📦 ऑर्डर #4 — स्थिती बदला:
+1️⃣ शिजत आहे 🍳
+2️⃣ डिलिव्हरीसाठी निघाली 🛵
+3️⃣ पूर्ण झाली ✅
+[CUST sends] [opt-in: no thanks] '2'
+[biteflow -> CUST] [opt-in: no thanks] हरकत नाही! 👍
+--- PART 5: status updates (cooking -> out for delivery -> completed -> customer tracked)
+
+[COOK sends] [cooking] '1'
+[biteflow -> COOK] [cooking] ✅ स्थिती बदलली: शिजत आहे 🍳
+[biteflow -> CUST] [cooking] 📦 ऑर्डर #4: शिजत आहे 🍳
+एकूण: ₹170.00
+[biteflow -> COOK] [cooking] 📦 ऑर्डर #4 — स्थिती बदला:
+1️⃣ शिजत आहे 🍳
+2️⃣ डिलिव्हरीसाठी निघाली 🛵
+3️⃣ पूर्ण झाली ✅
+[COOK sends] [out for delivery] '2'
+[biteflow -> COOK] [out for delivery] ✅ स्थिती बदलली: डिलिव्हरीसाठी निघाली 🛵
+[biteflow -> CUST] [out for delivery] 📦 ऑर्डर #4: डिलिव्हरीसाठी निघाली 🛵
+एकूण: ₹170.00
+[biteflow -> COOK] [out for delivery] 📦 ऑर्डर #4 — स्थिती बदला:
+1️⃣ शिजत आहे 🍳
+2️⃣ डिलिव्हरीसाठी निघाली 🛵
+3️⃣ पूर्ण झाली ✅
+[COOK sends] [completed] '3'
+[biteflow -> COOK] [completed] ✅ स्थिती बदलली: पूर्ण झाली ✅
+[biteflow -> CUST] [completed] 📦 ऑर्डर #4: पूर्ण झाली ✅
+एकूण: ₹170.00
+[biteflow -> COOK] [completed] 👩‍🍳 स्वयंपाकी मेनू:
+1️⃣ आजचा मेनू ठरवा 📋
+2️⃣ चालू ऑर्डरी पहा 📦
+3️⃣ व्यवसाय 📊
+4️⃣ मार्केटिंग 📣
+========================================================================
+STATE TRANSITIONS (engine state, captured live)
+========================================================================
+after CUST picks UPI: cook state=order_inbound_queue pending_kind=new_order order_status=received payment_status=unpaid
+after screenshot: cook state=order_inbound_queue pending_kind=payment order_status=received payment_status=pending_approval
+after approve: cook state=cook_home order_status=received payment_status=verified
+after open-orders: cook state=order_inbound_queue pending_kind=new_order
+after accept: cook state=status_update_broadcast order_status=accepted payment_status=verified
+customer state after opt-in=active_tracking
+final: order_status=completed payment_status=verified
+customer final session state=active_tracking
+
+========================================================================
+SUMMARY
+========================================================================
+All output above came from the real state machine + fake (in-memory)
+database. The fake DB is used only to avoid needing a live Postgres for
+this transcript; the Marathi-on-live-Postgres proof is the separate
+docs/evidence/product-experience-2026-09-07.txt artifact. No mocks, no
+hand-written chat text.
