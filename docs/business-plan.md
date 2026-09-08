@@ -73,13 +73,28 @@ Customer                Cook                        BiteFlow platform
   the pilot — milestones § "What must be true").
 - No money-movement rails are built or operated by BiteFlow in MVP. This
   avoids payment-gateway fees, settlement risk, chargebacks, and KYC
-  obligations for the pilot.
+  obligations for the pilot. Payment "intents," if ever generated, would
+  reference the cook's own VPA — the platform neither initiates settlement
+  nor sees funds.
 
 **From v1.2 (decision gated by measured pilot data — per milestones).**
 The billing decision is one of:
 
 - **Commission model:** platform takes a % of each completed order, or
 - **Subscription model:** cook pays a flat monthly fee.
+
+**The decision rule (F-27).** The candidates are not symmetric, and the
+choice is not a coin flip. Commission is a boundary-crossing candidate:
+payments move cook↔customer off-platform, so the platform has no settlement
+point to deduct 8–12% — commission requires a collection mechanism the
+cook accepts, designed as explicit v1.2 scope with its own acceptance test.
+Subscription wins by default. The rule:
+
+> **Commission** if and only if measured pilot data shows repeat-purchase
+> rate ≥ 40%, average order value ≥ ₹150, orders/cook/month ≥ 100,
+> **and** a cook-accepted collection mechanism passes its acceptance test
+> (the cook remits on schedule, measured over the pilot's billing cycles).
+> **Otherwise subscription by default.**
 
 The milestones document names the decision gate explicitly: the billing
 model is "chosen from measured pilot data, not before." The plan does
@@ -109,6 +124,11 @@ not pre-commit to either.
 
 - **Pricing:** ₹999/month (India) / $29/month (US) (**assumption** from
   milestones v1.2).
+- **Multi-market currency note (F-12):** prices are `NUMERIC(10,2)` with no
+  currency column — single-currency assumption per deployment (ARCHITECTURE
+  §10). Two-currency pricing therefore implies **per-market deployments**
+  (doubled ops) — that is this plan's v1.2 assumption — or a currency-column
+  migration, which is explicitly not in v1.2 scope.
 - **Logic:** predictable revenue per cook; cooks who sell ≥ ~₹10,000/month
   through the chat pay an effective take under 10% (**assumption** —
   arithmetic: ₹999 ÷ ₹10,000). Subscription sidesteps the collection
@@ -188,9 +208,9 @@ the choice is "cook subscription OR per-order commission."
 ### Infrastructure (measured/sourced)
 
 - **Pilot:** near-zero. FAQ documents the pilot stack: Supabase free tier
-  (Postgres) + Render free tier ≈ $0/month (**measured** as a documented
+  (Postgres) + Render free tier ≈ $0/month (**sourced** as a documented
   deployment option; free-tier limits are Meta/Render/Supabase policy and
-  should be rechecked at pilot time — sourced, not guaranteed).
+  should be rechecked at pilot time — not guaranteed).
 - **Small always-on setup:** roughly $7–12/month (**sourced** from the FAQ;
   covers a modest always-on host + managed Postgres; recheck at pilot
   time).
@@ -234,12 +254,23 @@ They exist to show the shape of the math, not to claim results.
 | Line | Value | Label |
 |---|---|---|
 | Average order value | ₹150 | assumption (home-kitchen meal) |
-| Platform commission | 10% | assumption (midpoint of 8–12%) |
-| Gross revenue per order | ₹15 | arithmetic on assumptions |
+| Platform commission | 8–10% (modeled both) | assumption (low end + midpoint of 8–12%) |
+| Gross revenue per order (10%) | ₹15 | arithmetic on assumptions |
+| Gross revenue per order (8%) | ₹12 | arithmetic on assumptions |
 | Meta WhatsApp conversation cost per order | ₹2–5 | assumption — **must read Meta rate card at pilot time** |
 | Payment reconciliation labor per order | ₹3–8 | assumption — depends on daily batch size |
 | Infra per order (amortized) | < ₹1 | assumption at 50+ orders/month on $7–12/mo stack |
-| **Contribution per order** | **≈ ₹1–9** | **assumption** |
+| **Contribution per order (10%)** | **≈ ₹1–9** | **assumption** |
+| **Contribution per order (8%)** | **≈ −₹2 to +₹7** | **assumption — negative in the high-cost case** |
+
+**Basket-composition assumption (F-28).** The ₹150 AOV assumption implies
+the average order is ~2 items: the plan's own evidence frame shows a
+"Veg Pulao ₹85.00" line item (v3-presentation-plan.md §2), so a single-item
+₹85 order is a realistic pilot case. Re-run at the evidence price: 10%
+commission on ₹85 grosses **₹8.50** against the same ₹5–14 variable costs →
+contribution **≈ −₹6 to +₹4, underwater before the pilot starts.** The
+commission case as modeled above only survives with the multi-item basket
+(~2 items per order). This is an **assumption to be measured**, not a fact.
 
 **Worked example — subscription model (assumptions):**
 
@@ -249,7 +280,7 @@ They exist to show the shape of the math, not to claim results.
 | Orders/month per cook | 100 | assumption |
 | Revenue per order (effective) | ₹9.99 | arithmetic on assumptions |
 | Variable cost per order (WhatsApp + labor share) | ₹5–13 | assumption (same lines as above) |
-| **Contribution per order (effective)** | **≈ ₹0 to −₹3** | **assumption — can go negative at low volume** |
+| **Contribution per order (effective)** | **≈ −₹3 to +₹5** | **assumption — both tails real** |
 
 **Reading the table honestly:**
 
@@ -289,6 +320,9 @@ contradicting it; elaborating the business-model implications).
    Mitigation in MVP: human daily reconciliation + per-customer order
    caps during pilot (per milestones). **What must be true:** fraud loss
    rate stays below the contribution margin per order — measure it.
+   Disclosed: the platform stores only the Meta `media_id`, never screenshot
+   bytes — a disputed payment cannot be re-inspected by the platform;
+   disputes rely on the cook's device copy.
 3. **Meta WhatsApp cost and policy.** Conversation pricing can change;
    template approvals can stall; policy violations can suspend the
    business number. Mitigation: user-initiated flows where possible,
@@ -324,7 +358,11 @@ contradicting it; elaborating the business-model implications).
 ## 8. MVP success criteria (tied to milestones.md)
 
 The milestones "Done criteria" are the MVP scoreboard; the business-plan
-readout maps each to a business question:
+readout maps each to a business question. **These criteria are demand
+validation, not business-model validation**: the ≥50 paid orders flow
+cook↔customer and the platform captures none of it — they prove GMV exists,
+not that BiteFlow can capture value. Zero willingness-to-pay signal exists
+in the MVP (the cook pays nothing by design).
 
 | Milestone done criterion | What it proves for the business |
 |---|---|
@@ -333,12 +371,52 @@ readout maps each to a business question:
 | Repeat order within 14 days ≥ 30% (**assumption**) | habit formation — the base of either revenue model |
 | Cook lists dish (photo + ingredients) < 5 min, unassisted | onboarding cost is bounded |
 | Zero failed `mr` registrations on live Postgres | India-pilot market is actually servable |
-| Zero lost/duplicate orders from webhook redelivery | money-adjacent state is trustworthy |
+| Webhook hardening controls implemented and verified | money-adjacent state cannot be forged before the pilot starts |
 
 **Business-plan gate to v1.2:** in addition to the above, the pilot must
 produce the measured inputs for §6 — actual average order value, actual
-Meta conversation cost per order, actual reconciliation minutes per order,
-and actual repeat rate. The billing-model decision (commission vs
-subscription) is made from those numbers, per the milestones growth gates
-(repeat-purchase ≥ 40%, positive contribution margin after reconciliation
-labor, 10 cooks at <1 day support each).
+Meta conversation cost per order, actual repeat rate, and the pilot's
+**#1 business metric: minutes per reconciled order** (the ₹3–8/order
+reconciliation labor line is the widest relative input in §6 — the
+difference between ₹9 and ₹1 contribution per order — and the single most
+valuable thing the pilot can measure). The first genuine business test is
+the v1.2 growth gate "contribution margin per order positive *after*
+payment-reconciliation labor." To keep the billing decision honest, the
+pilot includes a directional WTP probe: each pilot cook's stated reaction
+to a ₹999/month price, so the decision is not made from a zero-price
+baseline. The billing-model decision (commission vs subscription) is made
+from those numbers via the §2 decision rule — per the milestones growth
+gates (repeat-purchase ≥ 40%, positive contribution margin after
+reconciliation labor, 10 cooks at <1 day support each, median
+orders/cook/month ≥ 100 and median cook GMV ≥ ₹15,000).
+
+---
+
+## 9. Defensibility — the honest version (F-31)
+
+There is no structural moat, and this plan will not invent one:
+
+- **No network effect candidate exists in scope.** Marketplace/discovery
+  (the only classic network-effect surface) is explicitly out of scope
+  for MVP and v1.2.
+- **Switching cost is near zero.** The cook's customer list is the cook's;
+  the chat flow is replicable; nothing in the product locks a cook in.
+- **Technology is not defensible.** A state machine over the WhatsApp
+  Cloud API is buildable by any competent team.
+
+What a VC funds here, if anything, is an **execution play**:
+
+1. **Locale/voice UX depth for seniors** — the hardest part of this product
+   is not the bot, it is making a 70-year-old feel safe ordering dinner in
+   WhatsApp in their own language (Marathi-first pilot, mid-chat language
+   switching, single-digit flows). That depth compounds cook-by-cook.
+2. **Margin-alert intelligence** — the owner addendum (recipe bills of
+   materials, low-stock sweeps, the paneer counterfactual alert) replaces
+   notebook accounting the cook cannot do by hand. If it demonstrably
+   saves the cook money or time worth more than ₹999/month, it is the
+   retention argument.
+3. **Cook relationships via the referral loop** — dual-sided referral
+   credits and cook-to-cook word of mouth are the only distribution that
+   has ever worked for home-kitchen tools.
+4. **Speed.** The honest answer to "why you" is that the team ships a
+   working pilot first and measures everything.

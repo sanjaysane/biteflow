@@ -69,3 +69,27 @@ behind a green-looking run.
 Use the Supabase **connection pooler** URL (port 6543), not the direct
 5432 URL — serverless functions open many short-lived connections and
 will exhaust the direct limit.
+
+## "I need to restore the database" (backup → restore runbook, F-10)
+
+Status: **unrehearsed** — this runbook is documented but no restore has been
+rehearsed yet. The database holds orders, payment states, inventory, and
+customer sessions; the v3 pitch discloses the unrehearsed state in the Ask.
+Rehearse this before the first real order.
+
+1. **Take the backup.** On Supabase free tier: Database → Backups →
+   **Create backup** (daily automatic backups exist — a vendor feature, not
+   an ops capability until you have restored one). Download the dump or note
+   the point-in-time recovery timestamp.
+2. **Provision a fresh database.** Create a new Supabase project (or a new
+   database on the existing host). Record its new `DATABASE_URL`.
+3. **Restore.** `pg_restore` / `psql` the dump into the fresh database, then
+   run any pending migrations in `sql/migrations/` in order.
+4. **Point the app at it.** Set the fresh `DATABASE_URL` in the deployment
+   env, restart the app.
+5. **Verify.** Check `/health` is green; then, in `psql` against the fresh
+   database: `SELECT count(*) FROM orders;`, `SELECT count(*) FROM
+   chat_sessions;`, and spot-check that a recent order's `payment_status`
+   and the inventory rows match the pre-restore state.
+6. **Acceptance:** backup taken → restored to a new database → app boots →
+   orders/payment states intact. Record the date and who ran it.

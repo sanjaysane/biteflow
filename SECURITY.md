@@ -35,6 +35,23 @@ until at least the first three are addressed:
    template messages — production business-initiated outreach needs
    approved templates or Meta will rate-limit/ban the number.
 
+## Secret rotation and custody
+
+- **Rotation policy:** rotate `WHATSAPP_TOKEN`, `WEBHOOK_VERIFY_TOKEN`, and
+  the Meta app secret (a) on any staff/contractor change — the pilot's human
+  payment reconciler has access to the environment by necessity — and (b) at
+  most every 180 days. Rotating the webhook verify token requires re-entering
+  it in the Meta app dashboard webhook subscription; rotating the WhatsApp
+  token requires updating the deployment env vars and restarting.
+- **Per-environment separation:** pilot/production and local-dev credentials
+  are never shared. A leaked dev token must not be able to touch pilot
+  traffic. `.env` is never committed (see `.gitignore`); secrets live in
+  the host's environment or secret store, never in chat logs or screenshots
+  shared with the board.
+- **Custody:** the Meta app admin credentials (the account that can rotate
+  app secrets and webhook subscriptions) are held by the founder only —
+  not by the pilot reconciler or any contractor.
+
 ## Safe harbor for researchers
 
 If you follow this policy — private disclosure, no data exfiltration, no
