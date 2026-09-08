@@ -75,26 +75,68 @@ min/section).
   output, zero mockups.
 - **Must say (slowly, once):** the honest boundary — "what you're about
   to see is real output of the real system talking to a real database;
-  the WhatsApp side uses the same code path as production, but the pilot
-  build has known gaps we'll name at the end."
+  the engine and database path are the real production code; the WhatsApp
+  transport in this demo is a local adapter, not the live Meta Cloud API —
+  and the pilot build has known gaps we'll name at the end." (F-22: the
+  old "same code path as production" line is retired — the engine and DB
+  path are production, the transport is not.)
+- **Must say (who-pays, F-19):** "customers order for free; cooks use it
+  free in the pilot — the platform monetizes the cook side later."
 
 ### Section 2 — Walkthrough (target 6:00)
 
 - **Purpose:** show the *complete* product loop a real user would live
-  through: cook lists a dish → customer orders → cook accepts → customer
-  is updated → money state is tracked. Unhurried: one behavior at a time,
-  each shown to completion.
+  through: cook lists a dish → customer orders → cook is notified →
+  customer pays UPI → cook approves the payment → cook accepts →
+  customer is updated → payment state is tracked. Unhurried: one behavior
+  at a time, each shown to completion. At least **3:00 of the 6:00** is
+  one real customer order end-to-end.
 - **What it PROVES:** (a) cook menu flow with photo + ingredients +
-  description (b) customer ordering with single-digit replies (c) Marathi
-  locale end-to-end on live Postgres (d) nickname display, locale-aware
-  currency, and realistic inventory seed — all from evidence.
+  description (b) customer ordering with single-digit replies (c) the
+  Marathi fix is real, end-to-end on live Postgres (d) nickname display,
+  locale-aware currency, and realistic inventory seed (e) the money loop
+  with the cook's payment verdict — all from evidence.
 - **On screen, in order:**
-  1. The `mr` customer row from live Postgres (`docs/evidence/product-experience-2026-09-07.txt` § "user row on LIVE Postgres": phone +15550002222, `preferred_language: mr`) — proves the Marathi/Postgres fix (migration 006) is real.
-  2. The actual menu listing the Marathi customer received (the 📋 Meena Kaki चा मेनू frame, photo caption, ₹ pricing) — full screen, held ≥20 s, nothing cropped.
-  3. The nickname line (`display_name(+15550001111) -> Meena Kaki`) and the Indian-grouping currency line (`₹1,25,000.50`).
-  4. The inventory seed table (10 raw materials, INR costs) — held, not skimmed.
-  5. The Marathi round-trip rows from live Postgres (संजय साने / पनीर टिक्का / मसालेदार पनीर) — proves Devanagari reads back correctly.
-  6. The CHECK constraint catalog line (`users_preferred_language_check … ARRAY['en','es','hi','mr']`).
+  1. **The Marathi fix is real (45–60 s, one beat).** A single collapsed
+     beat replacing the old frames 1/5/6: the `mr` user row from live
+     Postgres, the Devanagari round-trip rows (संजय साने / पनीर टिक्का),
+     and the CHECK-constraint catalog line
+     (`ARRAY['en','es','hi','mr']`) — held together, narrated once.
+     (`docs/evidence/product-experience-2026-09-07.txt`.)
+  2. **The cook lists a dish (~60 s).** From
+     `docs/evidence/order-loop-marathi-2026-09-07.txt` Part 1 — the real
+     transcript: पदार्थाचं नाव → "व्हेज पुलाव"; price in ₹ ("85");
+     photo prompt; ingredients ("तांदूळ, वाटाणे, गाजर, तूप"); one-line
+     description; the live confirmation "✅ 'व्हेज पुलाव' जतन झालं —
+     ₹85.00". Shown BEFORE the customer-side menu frame, held long
+     enough to read.
+  3. **The customer orders (~60 s).** The real menu frame the Marathi
+     customer received (📋 +15550001111 चा मेनू, व्हेज पुलाव — ₹85.00,
+     ingredients, description), then the transcript beats: item 1 →
+     quantity 2 → checkout "0" → review screen (व्हेज पुलाव × 2 —
+     ₹170.00) → confirm "1". (`order-loop-marathi-2026-09-07.txt` Part 2.)
+  4. **The payment beat (~60 s, unhurried).** The Marathi payment screens
+     as the customer actually saw them: "2️⃣ फोनवरून पेमेंट (UPI)" —
+     UPI-only, no Zelle/Venmo/Pix; the UPI instructions ("₹170.00 UPI ने
+     पाठवा", screenshot-or-reference); then the cook's screen, **held
+     until the narration finishes**: "💳 ऑर्डर #4 साठी पेमेंटचा पुरावा …
+     1️⃣ पेमेंट मान्य करा 👍". **Must say:** "the cook approves only when
+     the money is really in their account — screenshot is a claim, not
+     settled funds." The cook replies "1": customer gets "✅ स्वयंपाक्याने
+     पेमेंट मान्य केलं!", cook gets "✅ पेमेंट मान्य केलं".
+     (`order-loop-marathi-2026-09-07.txt` Part 3.)
+  5. **Accept and status updates (~60 s).** The cook taps "2️⃣ चालू
+     ऑर्डरी पहा", sees the open order, replies "1" (accept); the customer
+     is told the order was accepted; the status prompt follows —
+     "1️⃣ शिजत आहे 🍳" → customer sees "📦 ऑर्डर #4: शिजत आहे 🍳",
+     "2️⃣ डिलिव्हरीसाठी निघाली 🛵", "3️⃣ पूर्ण झाली ✅" → customer
+     tracking updated each time. (`order-loop-marathi-2026-09-07.txt`
+     Parts 4–5.)
+  6. **Locale-aware details (~30 s).** The nickname line
+     (`display_name(+15550001111) -> Meena Kaki`) and the Indian-grouping
+     currency line (`₹1,25,000.50`).
+  7. **Inventory seed (~30 s).** The 10-raw-materials table (INR costs),
+     held, not skimmed.
 - **Pacing rule for this section:** every frame that contains product text
   stays on screen until the narration has finished describing it — the
   single biggest v2 pacing flaw was cutting frames before the viewer
@@ -114,6 +156,23 @@ min/section).
   (3) payments are trust-based (screenshot approval, no verified rail);
   (4) demo used fake/local WhatsApp adapters, not the live Meta Cloud
   API. Each item labeled FIXED or OPEN.
+- **Spoken narration (not just the card):** every OPEN item gets spoken
+  airtime, in plain language —
+  - "Webhook hardening — signature verification, dedupe, rate limiting —
+    is not implemented. Board approval tonight is conditional on it
+    landing before the first real order."
+  - "The demo runs the production engine and database path through a
+    local WhatsApp adapter, not the live Meta Cloud API."
+  - "No restore has been rehearsed yet — daily backups are a vendor
+    feature until we have restored one."
+  - "Ops today is grep-the-logs: a silent webhook outage during dinner
+    service would lose orders nobody sees. The pilot ops floor is alert
+    on handler errors, a daily reconciliation report, and a named human
+    on-call."
+  - "The 18.3 requests-per-second figure is a single-worker baseline, not
+    a capacity claim."
+  - "The owner and business-hub screens are still English-first — the
+    Marathi-first pass for the pilot is MVP scope." (D-01 disclosure.)
 - **Duration rule:** the two OPEN items get spoken narration, not just a
   card flash (v2's footer-flash failure, see §1).
 
@@ -126,12 +185,21 @@ min/section).
 - **On screen:**
   - The MVP money-flow diagram (business-plan.md §2): customer → cook
     (cash/UPI, direct); cook → platform: **nothing in MVP** (free).
-  - The two v1.2 candidates: 8–12% commission **OR** ₹999/mo (IN) /
-    $29/mo (US) — **assumption**, chosen from measured pilot data, not
-    before (milestones growth gates).
-  - The contribution-per-order table (§6): ₹15 gross on a ₹150 order
-    (assumption) minus WhatsApp conversation cost ₹2–5 and
-    reconciliation labor ₹3–8 → **≈ ₹1–9 (assumption)**.
+  - The two v1.2 candidates, presented with their real asymmetry —
+    commission is a **boundary-crossing candidate** (payments move
+    cook↔customer off-platform, so the platform has no settlement point
+    to deduct from; it requires a cook-accepted collection mechanism with
+    its own acceptance test), subscription **wins by default**. The plan
+    does not endorse either; the choice is gated on measured pilot data
+    via the §2 decision rule (repeat ≥ 40%, AOV ≥ ₹150, orders/cook ≥ 100,
+    collection mechanism accepted).
+  - The contribution-per-order table (§6): 10% on a ₹150 order (assumption)
+    minus WhatsApp conversation cost ₹2–5 and reconciliation labor
+    ₹3–8 → **≈ ₹1–9 (assumption)**; 8% → **≈ −₹2 to +₹7**; subscription
+    ₹999/100 orders → **≈ −₹3 to +₹5**. The reconciliation-labor line
+    stays visibly uncertain on screen (₹3–8, assumption — "minutes per
+    reconciled order" is the pilot's #1 measured metric); the video must
+    not soften it (F-08).
   - The binding unknown called out on screen: Meta's per-conversation
     price **must be read from Meta's rate card at pilot time** — no rate
     card number is quoted.
@@ -158,11 +226,17 @@ min/section).
   fade-out.
 - **On screen / spoken:** (1) approve the MVP milestone scope and done
   criteria (`docs/milestones.md`: ≥50 paid orders, ≥85% completion,
-  ≥30% repeat in 14 days, zero failed `mr` registrations, zero
-  lost/duplicate orders); (2) approve 1–2 pilot cooks in the
-  Marathi/India context with daily human payment reconciliation;
-  (3) approve the v1.2 billing-model decision gate (commission vs
-  subscription from measured data, not before).
+  ≥30% repeat in 14 days, webhook hardening controls implemented and
+  verified, recorded zero-failed `mr` registrations); (2) approve 1–2
+  pilot cooks in the Marathi/India context with daily human payment
+  reconciliation; (3) approve the v1.2 billing-model decision gate
+  (commission vs subscription from measured data via the business-plan §2
+  decision rule, not before).
+- **Spoken condition (F-07/F-08):** "approval tonight is conditional —
+  webhook hardening lands before the first real order." Say it out loud;
+  it must not be readable as approving unhardened money-adjacent traffic.
+- **Spoken disclosure (F-10):** "no backup restore has been rehearsed yet
+  — the runbook is written, the rehearsal is pilot-gating."
 
 ---
 
@@ -173,7 +247,11 @@ in §2 is said without a row here.
 
 | Claim (as narrated) | Evidence file / commit |
 |---|---|
-| 69 tests pass (2 warnings, deprecation-only) | `docs/evidence/test-run-2026-09-07.txt` (last line: `69 passed … in 1.87s`); note supersedes the v2 script's "47 tests" |
+| One real customer order end-to-end in Marathi: cook lists a dish (name → price → photo → ingredients → description → live confirmation); customer orders (item → qty → checkout → confirm); cook is notified; customer sends UPI screenshot; cook approves payment; cook accepts via open orders; status updates cooking → out for delivery → completed | `docs/evidence/order-loop-marathi-2026-09-07.txt` Parts 1–5 — verbatim real engine output. State transitions: `payment_status` unpaid → pending_approval → verified; `order_status` received → accepted → cooking → out_for_delivery → completed |
+| Cook's payment verdict is cook-verified, not bank-verified; narration: "the cook approves only when the money is really in their account — screenshot is a claim, not settled funds" | order-loop Part 3 (`cook_payment_proof` → "1️⃣ पेमेंट मान्य करा 👍"); `docs/business-plan.md` §1–§2; test `test_p2p_screenshot_approval_flow` |
+| Marathi payment screens are UPI-only — no Zelle/Venmo/Pix for the India-pilot user | `locales/mr.json` `p2p_instructions` ("UPI ने पाठवा") / `payment_title` ("(UPI)"); `en.json` keeps the multi-rail list for the US context |
+| Owner/business-hub screens are still English-first — Marathi-first is MVP scope | `locales/mr.json` covers 70 of 162 `en` keys (all `o_*`/`m_*` fall back to English); `docs/milestones.md` "Where we are"; disclosed in §3 Transitions |
+| 69 tests pass (2 warnings, deprecation-only); the 4 skips are the live-Postgres smoke tests, env-gated on `BITEFLOW_TEST_DATABASE_URL` | `docs/evidence/test-run-2026-09-07.txt` (last line: `69 passed, 4 skipped, 2 warnings`); note supersedes the v2 script's "47 tests" |
 | Menu, nickname, currency, inventory frames are real engine output on real Postgres | `docs/evidence/product-experience-2026-09-07.txt` — header states "All engine output above came from the real state machine + real PostgreSQL. No mocks, no hand-written values." |
 | Marathi `mr` registration works on live Postgres (gap #1 closed) | `docs/evidence/postgres-mr-verification.txt` — Step 2 CHECK violation before migration 006; Step 4 insert succeeds after |
 | `mr` locale accepted in `users_preferred_language_check` | `postgres-mr-verification.txt` + product-experience "CATALOG" section: `ARRAY['en','es','hi','mr']`; test `test_postgres_marathi_locale_accepted` in test-run log |
@@ -183,8 +261,8 @@ in §2 is said without a row here.
 | Dish photos + ingredients + description in menu | tests `test_cook_can_attach_photo_ingredients_description`, `test_customer_menu_shows_photo_ingredients_description`; milestone "Where we are" (commit `113881b`) |
 | Nickname display with phone fallback | product-experience § FIX #2; tests `test_nicknames_shown_instead_of_phone`, `test_phone_fallback_when_no_nickname` |
 | Payment tracking is cook-verified, not bank-verified; no commission in this build | `docs/business-plan.md` §1–§2; review-loop CHANGELOG A3/A13; tests `test_p2p_screenshot_approval_flow` |
-| Billing model undecided: 8–12% commission OR ₹999/$29 subscription, chosen from pilot data | `docs/milestones.md` v1.2 + `docs/business-plan.md` §3 (all labeled **assumption**) |
-| Contribution per order ≈ ₹1–9 (assumption), binding unknown = Meta per-conversation price | `docs/business-plan.md` §6 table; §6 "Reading the table honestly" |
+| Billing model undecided: commission (boundary-crossing candidate — needs a cook-accepted collection mechanism) OR ₹999/$29 subscription (wins by default), chosen from pilot data via the §2 decision rule | `docs/milestones.md` v1.2 + `docs/business-plan.md` §2–§3 (all labeled **assumption**) |
+| Contribution per order (assumption, both tails): commission 10% ≈ ₹1–9, 8% ≈ −₹2 to +₹7; subscription ≈ −₹3 to +₹5. Binding unknown = Meta per-conversation price | `docs/business-plan.md` §6 tables; §6 "Reading the table honestly" |
 | Webhook hardening NOT implemented (signature, dedupe, rate limiting) | `docs/milestones.md` Known gaps #2; README flag; review-loop CHANGELOG A11 (disclosure added to v2 closing card) |
 | Demo used fake/local WhatsApp adapters, not live Meta Cloud API | `docs/milestones.md` Known gaps #4 |
 | Pilot infra ≈ $0 on free tiers / ~$7–12 always-on (sourced, recheck at pilot time) | `docs/business-plan.md` §5 (sourced from FAQ) |
@@ -225,6 +303,13 @@ stays clean because these stay out of the narration and off the screen:
 
 ## 5. Build notes (for the narration/render pass)
 
+- **Narration register guidance (F-26):** board-register for the intro,
+  business model, and Ask ("the engine and database path are the real
+  production code"); **warm, non-technical Marathi for the UI-quoting
+  beats** — when the narration quotes a screen ("पेमेंट मान्य करा"), it
+  sounds like a person explaining to their neighbor, not a spec sheet.
+  No "डेटाबेस", "स्टेट मशीन", or "बॅकएंड" in voiceover where a senior
+  would hear it — say "सिस्टीम" or plain words instead.
 - v3 is a **new script**, not a patch of video-1/2/3: single narrator,
   single audience (the board), single product story.
 - Reuse corrected v2 phrasing (A22 patch, 2026-09-06): P&L "generated on
