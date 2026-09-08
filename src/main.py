@@ -44,6 +44,15 @@ def build_runtime():
     i18n = I18n(settings.locales_dir)
     if settings.database_url:
         db = PostgresDatabase(settings.database_url)
+    elif settings.biteflow_mode in ("pilot", "demo") and not settings.fake_db_explicit:
+        # F-17: refuse to boot a pilot/demo path on the in-memory fake DB —
+        # it wipes sessions and orders on restart. Explicit opt-in required.
+        raise RuntimeError(
+            f"BiteFlow [{settings.biteflow_mode}] refuses to boot on the "
+            "in-memory fake DB (all sessions/orders are wiped on restart). "
+            "Set DATABASE_URL for anything beyond a quick local try, or set "
+            "BITEFLOW_FAKE_DB=1 to explicitly accept the fake DB."
+        )
     else:
         db = FakeDatabase()
     if settings.whatsapp_token and settings.whatsapp_phone_number_id:

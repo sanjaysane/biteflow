@@ -11,6 +11,10 @@ def _get(name: str, default: str = "") -> str:
     return os.environ.get(name, default).strip()
 
 
+def _flag(name: str) -> bool:
+    return os.environ.get(name, "").strip().lower() in ("1", "true", "yes")
+
+
 @dataclass
 class Settings:
     whatsapp_token: str = field(default_factory=lambda: _get("WHATSAPP_TOKEN"))
@@ -29,6 +33,14 @@ class Settings:
         default_factory=lambda: _get("DEFAULT_LANGUAGE", "en")
     )
     cook_allowlist: tuple[str, ...] = field(default_factory=tuple)
+    # F-17 startup guard (see build_runtime in main.py): "pilot"/"demo"
+    # modes must not boot on the in-memory fake DB unless the operator
+    # explicitly opts in with BITEFLOW_FAKE_DB=1 — the fake DB wipes all
+    # sessions/orders on restart, a foot-gun on a pilot/demo path.
+    biteflow_mode: str = field(
+        default_factory=lambda: _get("BITEFLOW_MODE", "local").lower()
+    )
+    fake_db_explicit: bool = field(default_factory=lambda: _flag("BITEFLOW_FAKE_DB"))
 
     def __post_init__(self) -> None:
         raw = _get("COOK_ALLOWLIST")
