@@ -1,0 +1,48 @@
++ export PGPASSWORD=bf_test_pw_2026
++ PGPASSWORD=bf_test_pw_2026
++ PSQL='psql -h 127.0.0.1 -U postgres -d biteflow_mr_verify'
++ psql -h 127.0.0.1 -U postgres -d biteflow_mr_verify -c 'DROP DATABASE IF EXISTS'
++ true
++ psql -h 127.0.0.1 -U postgres -d postgres -c 'DROP DATABASE IF EXISTS biteflow_mr_verify;' -c 'CREATE DATABASE biteflow_mr_verify;'
++ tail -1
+CREATE DATABASE
++ echo '--- STEP 1: apply ORIGINAL schema.sql from git HEAD (buggy) ---'
+--- STEP 1: apply ORIGINAL schema.sql from git HEAD (buggy) ---
++ git -C /home/hatch/workspace/biteflow show HEAD:sql/schema.sql
++ chmod a+r /tmp/schema_old.sql
++ psql -h 127.0.0.1 -U postgres -d biteflow_mr_verify -v ON_ERROR_STOP=1 -f /tmp/schema_old.sql
++ tail -2
+INSERT 0 1
+INSERT 0 3
++ echo '--- STEP 2: insert user with preferred_language='\''mr'\'' (expect CHECK violation) ---'
+--- STEP 2: insert user with preferred_language='mr' (expect CHECK violation) ---
++ psql -h 127.0.0.1 -U postgres -d biteflow_mr_verify -c 'INSERT INTO users (phone_number, system_role, preferred_language) VALUES ('\''+919876543210'\'', '\''customer'\'', '\''mr'\'');'
+ERROR:  new row for relation "users" violates check constraint "users_preferred_language_check"
+DETAIL:  Failing row contains (2, +919876543210, customer, mr, null, 2026-09-08 00:09:26.192239+00).
++ echo '[exit=1] insert rejected as expected'
+[exit=1] insert rejected as expected
++ echo '--- STEP 3: apply migration 006_allow_marathi_locale.sql ---'
+--- STEP 3: apply migration 006_allow_marathi_locale.sql ---
++ psql -h 127.0.0.1 -U postgres -d biteflow_mr_verify -v ON_ERROR_STOP=1 -f /home/hatch/workspace/biteflow/sql/migrations/006_allow_marathi_locale.sql
+ALTER TABLE
+ALTER TABLE
++ echo '--- STEP 4: retry the '\''mr'\'' insert (expect success) ---'
+--- STEP 4: retry the 'mr' insert (expect success) ---
++ psql -h 127.0.0.1 -U postgres -d biteflow_mr_verify -c 'INSERT INTO users (phone_number, system_role, preferred_language) VALUES ('\''+919876543210'\'', '\''customer'\'', '\''mr'\'') RETURNING id, phone_number, system_role, preferred_language;'
+ id | phone_number  | system_role | preferred_language 
+----+---------------+-------------+--------------------
+  3 | +919876543210 | customer    | mr
+(1 row)
+
+INSERT 0 1
++ echo '--- STEP 5: app-level round-trip via src.db.PostgresDatabase ---'
+--- STEP 5: app-level round-trip via src.db.PostgresDatabase ---
++ /home/hatch/workspace/biteflow/.venv/bin/python -
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+ModuleNotFoundError: No module named 'src'
++ set +x
+--- STEP 5: app-level round-trip via src.db.PostgresDatabase (rerun from repo root) ---
+preferred_language: mr
+display_name: संजय साने
+OK: 'mr' + Marathi UTF-8 round-tripped through PostgresDatabase
